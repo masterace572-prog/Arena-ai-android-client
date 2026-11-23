@@ -8,22 +8,20 @@ A premium, fully-offline-UI Android client for the [Arena API](https://platform.
 
 ## Features
 
-- **Streaming chat** — tokens render live with a typing indicator and stop button.
+- **Streaming chat** — tokens render live with a quiet pulsing "Arena" indicator and stop button.
 - **Thinking, your way** — reasoning (when the API returns it) renders in a collapsible card:
   - Global modes: **Collapsed / Expanded / Hidden** (Settings → Thinking)
   - Per-message expand/collapse override
-  - Live "Thinking…" pulse while the model reasons
+  - **Thinking level: Off / Low / Medium / High** — `reasoning_effort` on OpenAI format,
+    thinking budget (1k/4k/6k tokens) on Anthropic format. Off = provider default.
 - **Connection test** — verifies your key with `GET /v1/models` only. **Free: 0 credits spent.**
-- **Model picker** — merges suggested high-rank models with everything your key can call:
-  - `coding-router-preview` (auto router)
-  - `claude-fable-5.2-max`, `claude-fable-5.1-max`, `gpt-6.2-astra-max`, `gpt-6-astra-max`,
-    `claude-opus-5.5-high`, `gpt-6.2-sol-max`, and more — plus the live list from your key
-  - Search, or type any exact model ID
-- **OpenAI & Anthropic formats** — switch per Settings; Anthropic adds optional extended-thinking requests.
+- **Locked to the working model** — `coding-router-preview` (Arena Router), the model your
+  promotional funds cover. No model picker to accidentally spend on direct models.
+- **OpenAI & Anthropic formats** — switch per Settings.
 - **Chats that persist** — drawer with recent conversations, new/select/delete, titles auto-named.
 - **Code-first rendering** — fenced code blocks with copy buttons, inline code, bold, lists.
-- **Premium UI** — flat smooth colors, no gradients, restrained typography, dark + light themes,
-  edge-to-edge, predictive back.
+- **Arena dashboard UI** — warm charcoal, hairline-bordered cards, serif headings,
+  white primary buttons, green status dot; dark + light, edge-to-edge, predictive back.
 
 ## Build the APK (GitHub Actions)
 

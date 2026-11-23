@@ -14,51 +14,51 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// Flat, smooth palette — no gradients anywhere.
+/**
+ * Mirrors platform.arena.ai: warm-neutral charcoal, hairline borders,
+ * serif display headings, white primary buttons, green status accent.
+ * Flat fills only — no gradients.
+ */
 object Palette {
-    // Dark
-    val DarkBg = Color(0xFF0E1013)
-    val DarkSurface = Color(0xFF15181D)
-    val DarkSurfaceLow = Color(0xFF111419)
-    val DarkSurfaceHigh = Color(0xFF1B1F26)
-    val DarkSurfaceHighest = Color(0xFF242932)
-    val DarkOutline = Color(0xFF272C35)
-    val DarkOnSurface = Color(0xFFE9ECF1)
-    val DarkSecondary = Color(0xFF9AA3AF)
-    val DarkTertiary = Color(0xFF6E7681)
+    // Dark (neutral, matching the Arena dashboard)
+    val DarkBg = Color(0xFF161616)
+    val DarkSurface = Color(0xFF1D1D1D)
+    val DarkSurfaceLow = Color(0xFF191919)
+    val DarkSurfaceHigh = Color(0xFF242424)
+    val DarkSurfaceHighest = Color(0xFF2C2C2C)
+    val DarkOutline = Color(0xFF2E2E2E)
+    val DarkOutlineVariant = Color(0xFF262626)
+    val DarkOnSurface = Color(0xFFEDEDED)
+    val DarkSecondary = Color(0xFF9B9B9B)
+    val DarkTertiary = Color(0xFF737373)
 
     // Light
-    val LightBg = Color(0xFFF6F7F9)
+    val LightBg = Color(0xFFFAFAFA)
     val LightSurface = Color(0xFFFFFFFF)
-    val LightSurfaceLow = Color(0xFFFAFAFB)
-    val LightSurfaceHigh = Color(0xFFF0F1F4)
-    val LightSurfaceHighest = Color(0xFFE7E9EE)
-    val LightOutline = Color(0xFFE2E4EA)
-    val LightOnSurface = Color(0xFF14161A)
-    val LightSecondary = Color(0xFF5C6470)
-    val LightTertiary = Color(0xFF8A919C)
+    val LightSurfaceLow = Color(0xFFFFFFFF)
+    val LightSurfaceHigh = Color(0xFFF2F2F2)
+    val LightSurfaceHighest = Color(0xFFE9E9E9)
+    val LightOutline = Color(0xFFE4E4E4)
+    val LightOutlineVariant = Color(0xFFECECEC)
+    val LightOnSurface = Color(0xFF161616)
+    val LightSecondary = Color(0xFF5C5C5C)
+    val LightTertiary = Color(0xFF8A8A8A)
 
     // Shared accents
-    val PrimaryDark = Color(0xFF8B95F5)
-    val PrimaryLight = Color(0xFF4F5BD5)
-    val UserBubbleDark = Color(0xFF232A44)
-    val UserBubbleLight = Color(0xFFE7EAFB)
-    val Success = Color(0xFF34D399)
+    val Green = Color(0xFF4ADE80)
     val Warning = Color(0xFFFBBF24)
     val Error = Color(0xFFF87171)
-    val ThinkingDark = Color(0xFF13161B)
-    val ThinkingLight = Color(0xFFF4F5F8)
-    val CodeDark = Color(0xFF101318)
-    val CodeLight = Color(0xFFEFF1F5)
+    val CodeDark = Color(0xFF1B1B1B)
+    val CodeLight = Color(0xFFF4F4F4)
 }
 
 private val DarkScheme = darkColorScheme(
-    primary = Palette.PrimaryDark,
-    onPrimary = Color(0xFF0E1013),
-    primaryContainer = Palette.UserBubbleDark,
-    onPrimaryContainer = Color(0xFFDDE1FF),
+    primary = Color(0xFFFFFFFF), // white buttons, like "Add funds"
+    onPrimary = Color(0xFF111111),
+    primaryContainer = Color(0xFF2A2A2A),
+    onPrimaryContainer = Color(0xFFEDEDED),
     secondary = Palette.DarkSecondary,
-    onSecondary = Color(0xFF15181D),
+    onSecondary = Color(0xFFFFFFFF),
     background = Palette.DarkBg,
     onBackground = Palette.DarkOnSurface,
     surface = Palette.DarkSurface,
@@ -67,21 +67,21 @@ private val DarkScheme = darkColorScheme(
     onSurfaceVariant = Palette.DarkSecondary,
     surfaceContainerLowest = Palette.DarkSurfaceLow,
     surfaceContainerLow = Palette.DarkSurface,
-    surfaceContainer = Color(0xFF191D24),
+    surfaceContainer = Color(0xFF1F1F1F),
     surfaceContainerHigh = Palette.DarkSurfaceHigh,
     surfaceContainerHighest = Palette.DarkSurfaceHighest,
     outline = Palette.DarkOutline,
-    outlineVariant = Color(0xFF1F242B),
+    outlineVariant = Palette.DarkOutlineVariant,
     error = Palette.Error,
     onError = Color(0xFF1A0A0A),
     scrim = Color(0xFF000000),
 )
 
 private val LightScheme = lightColorScheme(
-    primary = Palette.PrimaryLight,
+    primary = Color(0xFF161616), // black buttons on light, same as dashboard
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Palette.UserBubbleLight,
-    onPrimaryContainer = Color(0xFF202A80),
+    primaryContainer = Color(0xFFEDEDED),
+    onPrimaryContainer = Color(0xFF161616),
     secondary = Palette.LightSecondary,
     onSecondary = Color(0xFFFFFFFF),
     background = Palette.LightBg,
@@ -90,13 +90,13 @@ private val LightScheme = lightColorScheme(
     onSurface = Palette.LightOnSurface,
     surfaceVariant = Palette.LightSurfaceHigh,
     onSurfaceVariant = Palette.LightSecondary,
-    surfaceContainerLowest = Color(0xFFFFFFFF),
-    surfaceContainerLow = Palette.LightSurfaceLow,
+    surfaceContainerLowest = Palette.LightSurfaceLow,
+    surfaceContainerLow = Palette.LightSurface,
     surfaceContainer = Palette.LightSurface,
     surfaceContainerHigh = Palette.LightSurfaceHigh,
     surfaceContainerHighest = Palette.LightSurfaceHighest,
     outline = Palette.LightOutline,
-    outlineVariant = Palette.LightOutline,
+    outlineVariant = Palette.LightOutlineVariant,
     error = Color(0xFFD93025),
     onError = Color(0xFFFFFFFF),
     scrim = Color(0xFF000000),
@@ -106,20 +106,21 @@ private val ArenaTypography = Typography(
     displaySmall = TextStyle(
         fontSize = 30.sp,
         lineHeight = 38.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.5).sp,
+        fontWeight = FontWeight.Normal,
+        fontFamily = FontFamily.Serif,
+        letterSpacing = (-0.3).sp,
     ),
     headlineSmall = TextStyle(
         fontSize = 22.sp,
         lineHeight = 30.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.3).sp,
+        fontWeight = FontWeight.Normal,
+        fontFamily = FontFamily.Serif,
     ),
     titleLarge = TextStyle(
         fontSize = 19.sp,
         lineHeight = 26.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.2).sp,
+        fontWeight = FontWeight.Normal,
+        fontFamily = FontFamily.Serif,
     ),
     titleMedium = TextStyle(
         fontSize = 16.sp,

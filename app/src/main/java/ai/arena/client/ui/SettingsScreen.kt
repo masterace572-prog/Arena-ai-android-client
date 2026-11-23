@@ -5,8 +5,8 @@ package ai.arena.client.ui
 import ai.arena.client.ChatViewModel
 import ai.arena.client.ConnState
 import ai.arena.client.data.ApiFormat
+import ai.arena.client.data.ThinkingLevel
 import ai.arena.client.data.ThinkingMode
-import ai.arena.client.data.modelDisplay
 import ai.arena.client.data.normalizeGateway
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
@@ -38,7 +38,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -64,7 +63,6 @@ import java.util.Locale
 fun SettingsScreen(vm: ChatViewModel) {
     val ui by vm.ui.collectAsState()
     val settings by vm.settings.collectAsState()
-    var showPicker by rememberSaveable { mutableStateOf(false) }
 
     BackHandler { vm.setScreen(ai.arena.client.Screen.CHAT) }
 
@@ -101,15 +99,13 @@ fun SettingsScreen(vm: ChatViewModel) {
         ) {
             item { ConnectionCard(vm, ui.conn) }
             item { ApiKeyCard(vm, settings.apiKey) }
-            item { ModelCard(settings.model, onClick = { showPicker = true }) }
             item { FormatCard(settings.format) { f -> vm.updateSettings { it.copy(format = f) } } }
             item {
                 ThinkingCard(
                     mode = settings.thinkingMode,
-                    format = settings.format,
-                    anthropicThinking = settings.anthropicThinking,
+                    level = settings.thinkingLevel,
                     onMode = { m -> vm.updateSettings { it.copy(thinkingMode = m) } },
-                    onAnthropicThinking = { b -> vm.updateSettings { it.copy(anthropicThinking = b) } },
+                    onLevel = { l -> vm.updateSettings { it.copy(thinkingLevel = l) } },
                 )
             }
             item {
@@ -124,19 +120,6 @@ fun SettingsScreen(vm: ChatViewModel) {
         }
     }
 
-    if (showPicker) {
-        ModelPickerSheet(
-            current = settings.model,
-            models = ui.models,
-            modelsFetched = ui.modelsFetched,
-            conn = ui.conn,
-            onDismiss = { showPicker = false },
-            onSelect = { id ->
-                vm.updateSettings { it.copy(model = id) }
-                showPicker = false
-            },
-        )
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -277,51 +260,6 @@ private fun ApiKeyCard(vm: ChatViewModel, apiKey: String) {
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun ModelCard(model: String, onClick: () -> Unit) {
-    val display = modelDisplay(model)
-    SectionCard(title = "Model", caption = "Applies to new messages.") {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .clickable(onClick = onClick),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = display.label,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(Modifier.size(3.dp))
-                    Text(
-                        text = model,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                Icon(
-                    imageVector = Icons.Filled.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-
-@Composable
 private fun FormatCard(format: ApiFormat, onChange: (ApiFormat) -> Unit) {
     SectionCard(
         title = "API format",
@@ -347,10 +285,9 @@ private fun FormatCard(format: ApiFormat, onChange: (ApiFormat) -> Unit) {
 @Composable
 private fun ThinkingCard(
     mode: ThinkingMode,
-    format: ApiFormat,
-    anthropicThinking: Boolean,
+    level: ThinkingLevel,
     onMode: (ThinkingMode) -> Unit,
-    onAnthropicThinking: (Boolean) -> Unit,
+    onLevel: (ThinkingLevel) -> Unit,
 ) {
     SectionCard(
         title = "Thinking",
@@ -365,27 +302,27 @@ private fun ThinkingCard(
                 )
             }
         }
-        if (format == ApiFormat.ANTHROPIC) {
-            Spacer(Modifier.size(14.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Request extended thinking",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = "Some models may reject this — turn it off if chats fail.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = anthropicThinking,
-                    onCheckedChange = onAnthropicThinking,
+
+        Spacer(Modifier.size(16.dp))
+
+        Text(
+            text = "Thinking level",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.size(4.dp))
+        Text(
+            text = "Off = default. Higher levels reason longer and use more tokens.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.size(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ThinkingLevel.entries.forEach { l ->
+                SelectPill(
+                    text = l.label,
+                    selected = level == l,
+                    onClick = { onLevel(l) },
                 )
             }
         }

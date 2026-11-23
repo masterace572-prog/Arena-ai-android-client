@@ -1,6 +1,7 @@
 package ai.arena.client.net
 
 import ai.arena.client.data.ApiFormat
+import ai.arena.client.data.ThinkingLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -36,7 +37,7 @@ data class StreamRequest(
     val model: String,
     val system: String,
     val temperature: Float,
-    val anthropicThinking: Boolean,
+    val thinkingLevel: ThinkingLevel,
     val turns: List<ChatTurn>,
 )
 
@@ -119,6 +120,10 @@ class ArenaClient {
             .put("messages", messages)
             .put("stream", true)
         if (req.temperature >= 0f) body.put("temperature", req.temperature.toDouble())
+        // Thinking level (Off sends nothing — provider default).
+        if (req.thinkingLevel != ThinkingLevel.OFF) {
+            body.put("reasoning_effort", req.thinkingLevel.name.lowercase())
+        }
         return body.toString()
     }
 
@@ -137,10 +142,17 @@ class ArenaClient {
             .put("stream", true)
         if (req.system.isNotBlank()) body.put("system", req.system)
         if (req.temperature >= 0f) body.put("temperature", req.temperature.toDouble())
-        if (req.anthropicThinking) {
+        // Thinking level → Anthropic extended-thinking budget (must stay < max_tokens).
+        val budget = when (req.thinkingLevel) {
+            ThinkingLevel.OFF -> 0
+            ThinkingLevel.LOW -> 1024
+            ThinkingLevel.MEDIUM -> 4096
+            ThinkingLevel.HIGH -> 6144
+        }
+        if (budget > 0) {
             body.put(
                 "thinking",
-                JSONObject().put("type", "enabled").put("budget_tokens", 2048),
+                JSONObject().put("type", "enabled").put("budget_tokens", budget),
             )
         }
         return body.toString()

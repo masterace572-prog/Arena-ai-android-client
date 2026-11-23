@@ -20,13 +20,21 @@ enum class ThinkingMode(val label: String) {
     HIDDEN("Hidden"),
 }
 
+/** How hard the model reasons. Off = provider default (nothing extra sent). */
+enum class ThinkingLevel(val label: String) {
+    OFF("Off"),
+    LOW("Low"),
+    MEDIUM("Medium"),
+    HIGH("High"),
+}
+
 data class AppSettings(
     val apiKey: String = "",
     val gateway: String = DEFAULT_GATEWAY,
     val model: String = DEFAULT_MODEL,
     val format: ApiFormat = ApiFormat.OPENAI,
     val thinkingMode: ThinkingMode = ThinkingMode.COLLAPSED,
-    val anthropicThinking: Boolean = false,
+    val thinkingLevel: ThinkingLevel = ThinkingLevel.OFF,
     val systemPrompt: String = "",
     val temperature: Float = -1f, // -1 = provider default
 ) {
@@ -46,7 +54,7 @@ class SettingsStore(private val context: Context) {
         val MODEL = stringPreferencesKey("model")
         val FORMAT = stringPreferencesKey("format")
         val THINKING_MODE = stringPreferencesKey("thinking_mode")
-        val ANTHROPIC_THINKING = booleanPreferencesKey("anthropic_thinking")
+        val THINKING_LEVEL = stringPreferencesKey("thinking_level")
         val SYSTEM_PROMPT = stringPreferencesKey("system_prompt")
         val TEMPERATURE = floatPreferencesKey("temperature")
     }
@@ -59,7 +67,8 @@ class SettingsStore(private val context: Context) {
             format = p[Keys.FORMAT]?.let { runCatching { ApiFormat.valueOf(it) }.getOrNull() } ?: ApiFormat.OPENAI,
             thinkingMode = p[Keys.THINKING_MODE]?.let { runCatching { ThinkingMode.valueOf(it) }.getOrNull() }
                 ?: ThinkingMode.COLLAPSED,
-            anthropicThinking = p[Keys.ANTHROPIC_THINKING] ?: false,
+            thinkingLevel = p[Keys.THINKING_LEVEL]?.let { runCatching { ThinkingLevel.valueOf(it) }.getOrNull() }
+                ?: ThinkingLevel.OFF,
             systemPrompt = p[Keys.SYSTEM_PROMPT] ?: "",
             temperature = p[Keys.TEMPERATURE] ?: -1f,
         )
@@ -74,7 +83,8 @@ class SettingsStore(private val context: Context) {
                 format = p[Keys.FORMAT]?.let { runCatching { ApiFormat.valueOf(it) }.getOrNull() } ?: ApiFormat.OPENAI,
                 thinkingMode = p[Keys.THINKING_MODE]?.let { runCatching { ThinkingMode.valueOf(it) }.getOrNull() }
                     ?: ThinkingMode.COLLAPSED,
-                anthropicThinking = p[Keys.ANTHROPIC_THINKING] ?: false,
+                thinkingLevel = p[Keys.THINKING_LEVEL]?.let { runCatching { ThinkingLevel.valueOf(it) }.getOrNull() }
+                    ?: ThinkingLevel.OFF,
                 systemPrompt = p[Keys.SYSTEM_PROMPT] ?: "",
                 temperature = p[Keys.TEMPERATURE] ?: -1f,
             )
@@ -84,7 +94,7 @@ class SettingsStore(private val context: Context) {
             p[Keys.MODEL] = next.model.ifBlank { AppSettings.DEFAULT_MODEL }
             p[Keys.FORMAT] = next.format.name
             p[Keys.THINKING_MODE] = next.thinkingMode.name
-            p[Keys.ANTHROPIC_THINKING] = next.anthropicThinking
+            p[Keys.THINKING_LEVEL] = next.thinkingLevel.name
             p[Keys.SYSTEM_PROMPT] = next.systemPrompt
             p[Keys.TEMPERATURE] = next.temperature
         }

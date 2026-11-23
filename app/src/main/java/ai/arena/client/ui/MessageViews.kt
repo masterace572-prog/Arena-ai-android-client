@@ -273,7 +273,7 @@ fun ThinkingSection(
                 ThinkingDot(streaming)
                 Spacer(Modifier.size(8.dp))
                 Text(
-                    text = if (streaming) "Thinking…"
+                    text = if (streaming) "Arena"
                     else "Thought for ${formatElapsed(message.elapsedMs).ifBlank { "a moment" }}",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -331,30 +331,20 @@ private fun ThinkingDot(streaming: Boolean) {
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun TypingDots() {
-    val transition = rememberInfiniteTransition(label = "typing")
-    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        repeat(3) { index ->
-            val alpha by transition.animateFloat(
-                initialValue = 0.25f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(durationMillis = 520, delayMillis = index * 160),
-                    repeatMode = RepeatMode.Reverse,
-                ),
-                label = "dot$index",
-            )
-            Box(
-                modifier = Modifier
-                    .size(7.dp)
-                    .alpha(alpha)
-                    .background(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        shape = CircleShape,
-                    ),
-            )
-        }
-    }
+private fun ArenaPulse() {
+    val transition = rememberInfiniteTransition(label = "arena-pulse")
+    val alpha by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.35f,
+        animationSpec = infiniteRepeatable(tween(750), RepeatMode.Reverse),
+        label = "arena-pulse-alpha",
+    )
+    Text(
+        text = "Arena",
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.alpha(alpha),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -414,9 +404,9 @@ fun AssistantMessage(
 
             message.content.isNotBlank() -> MarkdownText(message.content)
 
-            message.streaming && message.thinking.isBlank() -> TypingDots()
+            message.streaming && message.thinking.isBlank() -> ArenaPulse()
 
-            message.streaming -> TypingDots()
+            else -> Unit // thinking card carries the signal while reasoning
         }
 
         if (!message.streaming && !message.error && message.content.isNotBlank()) {
@@ -506,7 +496,7 @@ private fun ErrorCard(message: String, onRetry: (() -> Unit)?) {
 }
 
 @Composable
-fun EmptyState(modelLabel: String) {
+fun EmptyState() {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -538,17 +528,5 @@ fun EmptyState(modelLabel: String) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
-        Spacer(Modifier.size(18.dp))
-        Surface(
-            shape = RoundedCornerShape(50),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ) {
-            Text(
-                text = modelLabel,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-            )
-        }
     }
 }

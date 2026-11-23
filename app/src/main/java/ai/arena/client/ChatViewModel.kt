@@ -8,7 +8,6 @@ import ai.arena.client.data.ConversationStore
 import ai.arena.client.data.Role
 import ai.arena.client.data.SettingsStore
 import ai.arena.client.data.ThinkingMode
-import ai.arena.client.data.mergeModels
 import ai.arena.client.net.ArenaClient
 import ai.arena.client.net.ChatTurn
 import ai.arena.client.net.StreamEvent
@@ -46,8 +45,6 @@ data class UiState(
     val screen: Screen = Screen.CHAT,
     val streaming: Boolean = false,
     val conn: ConnState = ConnState.Unknown,
-    val models: List<String> = emptyList(),
-    val modelsFetched: Boolean = false,
     val onboardingTesting: Boolean = false,
     val onboardingError: String? = null,
 )
@@ -121,11 +118,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 val models = client.listModels(s.apiKey, s.gateway)
                 val ms = SystemClock.elapsedRealtime() - t0
                 _ui.update {
-                    it.copy(
-                        conn = ConnState.Ok(models.size, ms),
-                        models = mergeModels(models),
-                        modelsFetched = true,
-                    )
+                    it.copy(conn = ConnState.Ok(models.size, ms))
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -155,8 +148,6 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                         onboardingTesting = false,
                         onboardingError = null,
                         conn = ConnState.Ok(models.size, ms),
-                        models = mergeModels(models),
-                        modelsFetched = true,
                         screen = Screen.CHAT,
                     )
                 }
@@ -296,7 +287,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             model = s.model,
             system = s.systemPrompt.trim(),
             temperature = s.temperature,
-            anthropicThinking = s.anthropicThinking && s.format == ApiFormat.ANTHROPIC,
+            thinkingLevel = s.thinkingLevel,
             turns = turns,
         )
 

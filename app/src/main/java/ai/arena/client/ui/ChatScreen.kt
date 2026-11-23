@@ -7,7 +7,6 @@ import ai.arena.client.ConnState
 import ai.arena.client.Screen
 import ai.arena.client.data.AppSettings
 import ai.arena.client.data.Conversation
-import ai.arena.client.data.modelDisplay
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -87,7 +86,6 @@ fun ChatScreen(vm: ChatViewModel) {
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    var showModels by rememberSaveable { mutableStateOf(false) }
 
     val conversations = ui.conversations
     val activeId = ui.activeId
@@ -96,7 +94,6 @@ fun ChatScreen(vm: ChatViewModel) {
     val messages = conversation?.messages ?: emptyList()
 
     BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
-    BackHandler(enabled = showModels) { showModels = false }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -118,10 +115,8 @@ fun ChatScreen(vm: ChatViewModel) {
             containerColor = MaterialTheme.colorScheme.background,
             topBar = {
                 ChatTopBar(
-                    model = settings.model,
                     conn = ui.conn,
                     onOpenDrawer = { scope.launch { drawerState.open() } },
-                    onOpenModels = { showModels = true },
                     onNewChat = vm::newChat,
                     onSettings = { vm.setScreen(Screen.SETTINGS) },
                 )
@@ -145,62 +140,27 @@ fun ChatScreen(vm: ChatViewModel) {
         }
     }
 
-    if (showModels) {
-        ModelPickerSheet(
-            current = settings.model,
-            models = ui.models,
-            modelsFetched = ui.modelsFetched,
-            conn = ui.conn,
-            onDismiss = { showModels = false },
-            onSelect = { id ->
-                vm.updateSettings { it.copy(model = id) }
-                showModels = false
-            },
-        )
-    }
 }
 
 // ---------------------------------------------------------------------------
 
 @Composable
 private fun ChatTopBar(
-    model: String,
     conn: ConnState,
     onOpenDrawer: () -> Unit,
-    onOpenModels: () -> Unit,
     onNewChat: () -> Unit,
     onSettings: () -> Unit,
 ) {
-    val display = modelDisplay(model)
     TopAppBar(
         title = {
-            Surface(
-                modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onOpenModels),
-                shape = RoundedCornerShape(50),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-            ) {
-                Row(
-                    modifier = Modifier.padding(start = 12.dp, end = 10.dp, top = 7.dp, bottom = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    StatusDot(conn, size = 7.dp)
-                    Spacer(Modifier.size(8.dp))
-                    Text(
-                        text = display.label,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(Modifier.size(2.dp))
-                    Icon(
-                        imageVector = Icons.Filled.KeyboardArrowDown,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Arena",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Spacer(Modifier.size(10.dp))
+                StatusDot(conn, size = 7.dp)
             }
         },
         navigationIcon = {
@@ -395,7 +355,7 @@ private fun MessageList(
 
     if (messages.isEmpty()) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            EmptyState(modelLabel = modelDisplay(settings.model).label)
+            EmptyState()
         }
         return
     }
