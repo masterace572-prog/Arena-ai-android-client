@@ -484,7 +484,4 @@ private fun fieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTextColor = MaterialTheme.colorScheme.onSurface,
     unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
     cursorColor = MaterialTheme.colorScheme.primary,
-    focusedLabelColor = MaterialTheme.colorScheme.primary,
-    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
 )

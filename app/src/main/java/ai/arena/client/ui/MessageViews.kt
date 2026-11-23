@@ -339,9 +339,8 @@ private fun TypingDots() {
                 initialValue = 0.25f,
                 targetValue = 1f,
                 animationSpec = infiniteRepeatable(
-                    animation = tween(520),
+                    animation = tween(durationMillis = 520, delayMillis = index * 160),
                     repeatMode = RepeatMode.Reverse,
-                    initialDelay = index * 160L,
                 ),
                 label = "dot$index",
             )
