@@ -278,7 +278,18 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         replaceConversation(withAssistant)
 
         val turns = normalizeTurns(withAssistant.messages)
-        if (turns.isEmpty()) return
+        if (turns.isEmpty()) {
+            mutateMessage(withAssistant.id, assistant.id) {
+                it.copy(
+                    streaming = false,
+                    elapsedMs = 0,
+                    error = true,
+                    errorMessage = "Nothing to send",
+                )
+            }
+            _ui.update { it.copy(streaming = false) }
+            return
+        }
 
         val request = StreamRequest(
             gateway = s.gateway,
@@ -322,13 +333,17 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             } finally {
                 val elapsed = SystemClock.elapsedRealtime() - t0
                 mutateMessage(withAssistant.id, assistant.id) { m ->
+                    // A stream that ended with nothing is a failure the user can retry,
+                    // not a silent empty bubble.
+                    val noReply = failure == null && m.content.isBlank() && m.thinking.isBlank()
                     m.copy(
                         streaming = false,
                         elapsedMs = elapsed,
                         tokensIn = tokensIn,
                         tokensOut = tokensOut,
-                        error = failure != null,
-                        errorMessage = failure,
+                        error = failure != null || noReply,
+                        errorMessage = failure
+                            ?: if (noReply) "No response received — tap Retry" else null,
                     )
                 }
                 _ui.update { it.copy(streaming = false) }

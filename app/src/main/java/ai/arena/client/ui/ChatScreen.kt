@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.onFocusChanged
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
@@ -35,11 +36,10 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Button
@@ -154,6 +154,13 @@ private fun ChatTopBar(
     TopAppBar(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Sparkle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.size(17.dp),
+                )
+                Spacer(Modifier.size(8.dp))
                 Text(
                     text = "Arena",
                     style = MaterialTheme.typography.titleLarge,
@@ -396,6 +403,8 @@ private fun InputBar(
 ) {
     var text by rememberSaveable { mutableStateOf("") }
 
+    var focused by remember { mutableStateOf(false) }
+
     Surface(
         color = MaterialTheme.colorScheme.background,
         modifier = Modifier
@@ -411,17 +420,23 @@ private fun InputBar(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(24.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    border = BorderStroke(
+                        1.dp,
+                        if (focused) MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+                        else MaterialTheme.colorScheme.outlineVariant,
+                    ),
                 ) {
                     BasicTextField(
                         value = text,
                         onValueChange = { text = it },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { focused = it.isFocused },
                         textStyle = MaterialTheme.typography.bodyMedium.copy(
                             color = MaterialTheme.colorScheme.onSurface,
                         ),
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                        maxLines = 6,
+                        maxLines = 12,
                         keyboardOptions = KeyboardOptions(
                             imeAction = if (streaming) ImeAction.None else ImeAction.Send,
                         ),
@@ -471,14 +486,14 @@ private fun InputBar(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        imageVector = if (streaming) Icons.Filled.Close else Icons.Filled.Send,
+                        imageVector = if (streaming) StopSquare else Icons.Filled.KeyboardArrowUp,
                         contentDescription = if (streaming) "Stop" else "Send",
                         tint = when {
                             streaming -> MaterialTheme.colorScheme.onSurface
                             canSend -> MaterialTheme.colorScheme.onPrimary
                             else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         },
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(if (streaming) 18.dp else 22.dp),
                     )
                 }
             }

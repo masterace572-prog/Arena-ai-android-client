@@ -167,6 +167,7 @@ class ArenaClient {
         parse: (String) -> List<StreamEvent>,
     ): Flow<StreamEvent> = channelFlow {
         val call = streamHttp.newCall(request)
+        val lastActivity = java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis())
         launch(Dispatchers.IO) {
             var failed = false
             try {
@@ -186,6 +187,7 @@ class ArenaClient {
                     var done = false
                     while (!done) {
                         val line = source.readUtf8Line() ?: break
+                        lastActivity.set(System.currentTimeMillis())
                         when {
                             line.startsWith("data:") -> dataLines.add(line.substring(5).trim())
                             line.isEmpty() -> {
@@ -202,6 +204,13 @@ class ArenaClient {
                             }
                         }
                     }
+                    // Gateways that skip the trailing blank line would otherwise
+                    // drop the final chunk — flush whatever is pending.
+                    if (dataLines.isNotEmpty()) {
+                        val payload = dataLines.joinToString("\n")
+                        dataLines.clear()
+                        if (payload != "[DONE]") parse(payload).forEach { emitSafely(it) }
+                    }
                     if (!failed) emitSafely(StreamEvent.Done)
                 }
             } catch (e: CancellationException) {
@@ -216,12 +225,35 @@ class ArenaClient {
                 this@channelFlow.close()
             }
         }
-        awaitClose { call.cancel() }
+        // Never hang forever: if the socket goes quiet for two minutes, surface
+        // an error and cancel so the user sees Retry instead of an endless pulse.
+        val watchdog = launch {
+            while (true) {
+                kotlinx.coroutines.delay(15_000)
+                if (System.currentTimeMillis() - lastActivity.get() > 120_000) {
+                    emitSafely(
+                        StreamEvent.Error(
+                            "No response for 2 minutes — the model may be busy. Retry.",
+                        ),
+                    )
+                    call.cancel()
+                    break
+                }
+            }
+        }
+        awaitClose {
+            call.cancel()
+            watchdog.cancel()
+        }
     }
 
     // ---- OpenAI chat-completions SSE ----
     private fun parseOpenAi(payload: String): List<StreamEvent> {
         val obj = runCatching { JSONObject(payload) }.getOrNull() ?: return emptyList()
+        obj.optJSONObject("error")?.let { e ->
+            val msg = e.optString("message").ifBlank { e.optString("type") }
+            return listOf(StreamEvent.Error(msg.ifBlank { "Request failed" }))
+        }
         val events = mutableListOf<StreamEvent>()
         obj.optJSONObject("usage")?.let { u ->
             events.add(

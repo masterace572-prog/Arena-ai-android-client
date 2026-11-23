@@ -40,8 +40,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -57,6 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 
 // ---------------------------------------------------------------------------
 // Markdown (lightweight: code fences, headings, bullets, bold, inline code)
@@ -198,7 +202,6 @@ private fun MarkdownText(text: String) {
 
 @Composable
 private fun CodeBlock(lang: String, code: String) {
-    val clipboard = LocalClipboardManager.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -216,7 +219,7 @@ private fun CodeBlock(lang: String, code: String) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
-                ActionPill(text = "Copy", onClick = { clipboard.setText(AnnotatedString(code)) })
+                CopyPill(textToCopy = code)
             }
             Text(
                 text = code,
@@ -230,6 +233,29 @@ private fun CodeBlock(lang: String, code: String) {
             )
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Copy with quiet confirmation
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun CopyPill(textToCopy: String, label: String = "Copy") {
+    val clipboard = LocalClipboardManager.current
+    var copied by remember { mutableStateOf(false) }
+    LaunchedEffect(copied) {
+        if (copied) {
+            delay(1600)
+            copied = false
+        }
+    }
+    ActionPill(
+        text = if (copied) "Copied ✓" else label,
+        onClick = {
+            clipboard.setText(AnnotatedString(textToCopy))
+            copied = true
+        },
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -247,11 +273,13 @@ fun ThinkingSection(
     val thinking = message.thinking
     if (thinking.isBlank()) return
 
-    val expanded = when (mode) {
+    val base = when (mode) {
         ThinkingMode.HIDDEN -> return
-        ThinkingMode.COLLAPSED -> message.thinkingExpanded ?: false
-        ThinkingMode.EXPANDED -> message.thinkingExpanded ?: true
+        ThinkingMode.COLLAPSED -> false
+        ThinkingMode.EXPANDED -> true
     }
+    // Show reasoning live while the model works; honor per-message override always.
+    val expanded = message.thinkingExpanded ?: (streaming || base)
     val chevron by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         animationSpec = tween(220),
@@ -314,15 +342,13 @@ private fun ThinkingDot(streaming: Boolean) {
         animationSpec = infiniteRepeatable(tween(600), RepeatMode.Reverse),
         label = "think-dot-alpha",
     )
-    Box(
+    Icon(
+        imageVector = Sparkle,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
-            .size(7.dp)
-            .alpha(if (streaming) alpha else 1f)
-            .background(
-                color = if (streaming) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurfaceVariant,
-                shape = CircleShape,
-            ),
+            .size(15.dp)
+            .alpha(if (streaming) alpha else 1f),
     )
 }
 
@@ -380,7 +406,6 @@ fun AssistantMessage(
     onToggleThinking: () -> Unit,
     onRegenerate: () -> Unit,
 ) {
-    val clipboard = LocalClipboardManager.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -414,7 +439,7 @@ fun AssistantMessage(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ActionPill(text = "Copy", onClick = { clipboard.setText(AnnotatedString(message.content)) })
+                CopyPill(textToCopy = message.content)
                 if (isLast) {
                     ActionPill(text = "Regenerate", onClick = onRegenerate)
                 }
