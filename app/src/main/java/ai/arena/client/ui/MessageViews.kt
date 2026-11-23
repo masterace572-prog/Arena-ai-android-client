@@ -100,7 +100,7 @@ private fun parseMarkdown(src: String): List<MdBlock> {
                 if (i < lines.size) i++ // closing fence
                 blocks.add(MdBlock.Code(lang, buf.toString().trimEnd('\n')))
             }
-            trimmed.startsWith("|") && trimmed.contains("|", startIndex = 1) -> {
+            trimmed.startsWith("|") && trimmed.count { it == '|' } >= 2 -> {
                 val tableLines = mutableListOf<String>()
                 while (i < lines.size && lines[i].trimStart().startsWith("|")) {
                     tableLines.add(lines[i].trim())
