@@ -55,7 +55,7 @@ val StopSquare: ImageVector by lazy {
     }.build()
 }
 
-/** Copy — two overlapping rounded sheets. */
+/** Copy — two overlapping rounded sheets with a clear offset. */
 val CopyGlyph: ImageVector by lazy {
     ImageVector.Builder(
         name = "CopyGlyph",
@@ -64,33 +64,30 @@ val CopyGlyph: ImageVector by lazy {
         viewportWidth = 24f,
         viewportHeight = 24f,
     ).apply {
-        // Back sheet
+        // Back sheet (peeks top-right)
         path(fill = SolidColor(Color.Black)) {
-            moveTo(9f, 3f)
-            quadTo(7.9f, 3f, 7.9f, 4.1f)
-            lineTo(7.9f, 15.9f)
-            quadTo(7.9f, 17f, 9f, 17f)
-            lineTo(17.4f, 17f)
-            quadTo(18.5f, 17f, 18.5f, 15.9f)
-            lineTo(18.5f, 14.2f)
-            lineTo(16.6f, 14.2f)
-            lineTo(16.6f, 15.1f)
-            lineTo(9.7f, 15.1f)
-            lineTo(9.7f, 4.9f)
-            lineTo(14.4f, 4.9f)
-            lineTo(14.4f, 3f)
+            moveTo(12f, 3f)
+            lineTo(18f, 3f)
+            quadTo(20f, 3f, 20f, 5f)
+            lineTo(20f, 13f)
+            quadTo(20f, 15f, 18f, 15f)
+            lineTo(12f, 15f)
+            quadTo(10f, 15f, 10f, 13f)
+            lineTo(10f, 5f)
+            quadTo(10f, 3f, 12f, 3f)
             close()
         }
         // Front sheet
         path(fill = SolidColor(Color.Black)) {
-            moveTo(5.5f, 7f)
-            quadTo(4.4f, 7f, 4.4f, 8.1f)
-            lineTo(4.4f, 19.9f)
-            quadTo(4.4f, 21f, 5.5f, 21f)
-            lineTo(14.8f, 21f)
-            quadTo(15.9f, 21f, 15.9f, 19.9f)
-            lineTo(15.9f, 8.1f)
-            quadTo(15.9f, 7f, 14.8f, 7f)
+            moveTo(6f, 8.5f)
+            lineTo(13f, 8.5f)
+            quadTo(15f, 8.5f, 15f, 10.5f)
+            lineTo(15f, 19f)
+            quadTo(15f, 21f, 13f, 21f)
+            lineTo(6f, 21f)
+            quadTo(4f, 21f, 4f, 19f)
+            lineTo(4f, 10.5f)
+            quadTo(4f, 8.5f, 6f, 8.5f)
             close()
         }
     }.build()

@@ -19,6 +19,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -682,7 +683,18 @@ private fun InputBar(
                             color = when {
                                 streaming -> MaterialTheme.colorScheme.surfaceContainerHighest
                                 canSend -> MaterialTheme.colorScheme.primary
-                                else -> MaterialTheme.colorScheme.surfaceContainerHigh
+                                else -> androidx.compose.ui.graphics.Color.Transparent
+                            },
+                        )
+                        .then(
+                            if (!canSend && !streaming) {
+                                Modifier.border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                    CircleShape,
+                                )
+                            } else {
+                                Modifier
                             },
                         )
                         .clickable(enabled = canSend || streaming) {
@@ -708,7 +720,7 @@ private fun InputBar(
                             tint = when {
                                 isStreaming -> MaterialTheme.colorScheme.onSurface
                                 canSend -> MaterialTheme.colorScheme.onPrimary
-                                else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                             },
                             modifier = Modifier.size(if (isStreaming) 18.dp else 22.dp),
                         )

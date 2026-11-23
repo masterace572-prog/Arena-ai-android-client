@@ -23,7 +23,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,6 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -56,6 +61,7 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
@@ -72,8 +78,13 @@ private sealed interface MdBlock {
     data class Code(val lang: String, val code: String) : MdBlock
     data class Heading(val text: String) : MdBlock
     data class Bullets(val items: List<String>) : MdBlock
+    data class Ordered(val items: List<String>) : MdBlock
+    data class Quote(val text: String) : MdBlock
     data class Table(val header: List<String>, val rows: List<List<String>>) : MdBlock
+    data object Divider : MdBlock
 }
+
+private val ORDERED_ITEM = Regex("\\d{1,3}\\.\\s+(.+)")
 
 private fun parseCells(line: String): List<String> =
     line.trim().trim('|').split('|').map { it.trim() }
@@ -130,6 +141,30 @@ private fun parseMarkdown(src: String): List<MdBlock> {
                 }
                 blocks.add(MdBlock.Bullets(items))
             }
+            trimmed == "---" || trimmed == "***" || trimmed == "___" -> {
+                blocks.add(MdBlock.Divider)
+                i++
+            }
+            trimmed.startsWith(">") -> {
+                val buf = StringBuilder()
+                while (i < lines.size && lines[i].trimStart().startsWith(">")) {
+                    val t = lines[i].trimStart().removePrefix(">").trimStart()
+                    if (buf.isNotEmpty()) buf.append('\n')
+                    buf.append(t)
+                    i++
+                }
+                blocks.add(MdBlock.Quote(buf.toString()))
+            }
+            ORDERED_ITEM.matchEntire(trimmed) != null -> {
+                val items = mutableListOf<String>()
+                while (i < lines.size) {
+                    val m = ORDERED_ITEM.matchEntire(lines[i].trimStart())
+                    if (m == null) break
+                    items.add(m.groupValues[1])
+                    i++
+                }
+                blocks.add(MdBlock.Ordered(items))
+            }
             line.isBlank() -> i++
             else -> {
                 val buf = StringBuilder(line)
@@ -138,7 +173,9 @@ private fun parseMarkdown(src: String): List<MdBlock> {
                     val next = lines[i]
                     val nt = next.trimStart()
                     if (next.isBlank() || nt.startsWith("```") || nt.startsWith("#") ||
-                        nt.startsWith("- ") || nt.startsWith("* ") || nt.startsWith("|")
+                        nt.startsWith("- ") || nt.startsWith("* ") || nt.startsWith("|") ||
+                        nt.startsWith(">") || ORDERED_ITEM.matchEntire(nt) != null ||
+                        nt == "---"
                     ) break
                     buf.append('\n').append(next)
                     i++
@@ -150,8 +187,10 @@ private fun parseMarkdown(src: String): List<MdBlock> {
     return blocks
 }
 
-private val INLINE_REGEX =
-    Regex("(\\*\\*[^*\\n]+\\*\\*|`[^`\\n]+`|https?://[^\\s)\\]]+)")
+private val INLINE_REGEX = Regex(
+    "(\\*\\*[^*\\n]+\\*\\*|`[^`\\n]+`|\\[([^\\]\\n]+)]\\((https?://[^)\\s]+)\\)" +
+        "|https?://[^\\s)\\]]+|\\*[^*\\n]+\\*)",
+)
 
 private fun buildInline(
     text: String,
@@ -164,12 +203,27 @@ private fun buildInline(
         INLINE_REGEX.findAll(text).forEach { m ->
             if (m.range.first > idx) append(text.substring(idx, m.range.first))
             val token = m.value
+            val mdLabel = m.groupValues.getOrNull(2).orEmpty()
+            val mdUrl = m.groupValues.getOrNull(3).orEmpty()
+            val linkStyle = SpanStyle(
+                color = linkColor,
+                textDecoration = androidx.compose.ui.text.style.TextUnderline,
+            )
             when {
                 token.startsWith("**") -> withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) {
                     append(token.removePrefix("**").removeSuffix("**"))
                 }
-                token.startsWith("http") -> withLink(LinkAnnotation.Url(token)) {
-                    withStyle(SpanStyle(color = linkColor)) { append(token) }
+                mdUrl.isNotEmpty() -> withLink(LinkAnnotation.Url(mdUrl)) {
+                    withStyle(linkStyle) { append(mdLabel) }
+                }
+                token.startsWith("http") -> {
+                    val url = token.trimEnd('.', ',', ';', ':')
+                    withLink(LinkAnnotation.Url(url)) {
+                        withStyle(linkStyle) { append(token) }
+                    }
+                }
+                token.startsWith("*") -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                    append(token.trim('*'))
                 }
                 else -> withStyle(
                     SpanStyle(
@@ -233,6 +287,51 @@ private fun MarkdownText(text: String) {
                         }
                     }
                 }
+                is MdBlock.Ordered -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    block.items.forEachIndexed { idx, item ->
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = "${idx + 1}.",
+                                style = bodyStyle,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(end = 8.dp),
+                            )
+                            Text(
+                                text = remember(item, codeBg, linkColor) {
+                                    buildInline(item, codeBg, codeFg, linkColor)
+                                },
+                                style = bodyStyle,
+                                color = onBackground,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+                is MdBlock.Quote -> Row(
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(3.dp)
+                            .fillMaxHeight()
+                            .background(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
+                                RoundedCornerShape(2.dp),
+                            ),
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = remember(block.text, codeBg, linkColor) {
+                            buildInline(block.text, codeBg, codeFg, linkColor)
+                        },
+                        style = MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                is MdBlock.Divider -> HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                )
                 is MdBlock.Table -> TableBlock(header = block.header, rows = block.rows)
                 is MdBlock.Code -> CodeBlock(lang = block.lang, code = block.code)
             }

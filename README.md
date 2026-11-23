@@ -5,7 +5,7 @@ A premium, fully-offline-UI Android client for the [Arena API](https://platform.
 - **Package:** `ai.arena.client`
 - **App name:** Arena
 - **Requires:** Android 8.1+ (API 26), fully tested target for Android 13+ (API 33–36)
-- **Version:** 2.2.0
+- **Version:** 2.2.1
 
 ## Features
 

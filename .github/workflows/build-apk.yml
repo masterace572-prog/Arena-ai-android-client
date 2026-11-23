@@ -70,8 +70,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout --orphan apk-delivery
           git rm -rf --cached . > /dev/null 2>&1 || true
-          cp app/build/outputs/apk/release/app-release.apk Arena-Android-v2.2.0.apk
-          git add -f Arena-Android-v2.2.0.apk
+          cp app/build/outputs/apk/release/app-release.apk Arena-Android-v2.2.1.apk
+          git add -f Arena-Android-v2.2.1.apk
           git commit -m "APK for $GITHUB_SHA"
           git push --force origin HEAD:apk
 
@@ -80,7 +80,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "v2.2.0" app/build/outputs/apk/release/app-release.apk \
-            --title "Arena Android Client v2.2.0" \
+          gh release create "v2.2.1" app/build/outputs/apk/release/app-release.apk \
+            --title "Arena Android Client v2.2.1" \
             --notes "Streaming Arena API client — thinking collapse, model picker, free connection test. Package: ai.arena.client" \
-            || gh release upload "v2.2.0" app/build/outputs/apk/release/app-release.apk --clobber
+            || gh release upload "v2.2.1" app/build/outputs/apk/release/app-release.apk --clobber

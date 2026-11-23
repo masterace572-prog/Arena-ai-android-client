@@ -189,6 +189,7 @@ class ArenaClient {
         val lastActivity = java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis())
         launch(Dispatchers.IO) {
             var failed = false
+            var searchAnnounced = false
             try {
                 call.execute().use { response ->
                     if (!response.isSuccessful) {
@@ -217,7 +218,14 @@ class ArenaClient {
                                 if (payload == "[DONE]") {
                                     done = true
                                 } else {
-                                    parse(payload).forEach { emitSafely(it) }
+                                    parse(payload).forEach { ev ->
+                                        val isSearch = ev is StreamEvent.Thinking &&
+                                            ev.text.contains("Searching the web")
+                                        if (!isSearch || !searchAnnounced) {
+                                            if (isSearch) searchAnnounced = true
+                                            emitSafely(ev)
+                                        }
+                                    }
                                 }
                             }
                             else -> { // event:, id:, retry:, comments
@@ -229,7 +237,14 @@ class ArenaClient {
                     if (dataLines.isNotEmpty()) {
                         val payload = dataLines.joinToString("\n")
                         dataLines.clear()
-                        if (payload != "[DONE]") parse(payload).forEach { emitSafely(it) }
+                        if (payload != "[DONE]") parse(payload).forEach { ev ->
+                            val isSearch = ev is StreamEvent.Thinking &&
+                                ev.text.contains("Searching the web")
+                            if (!isSearch || !searchAnnounced) {
+                                if (isSearch) searchAnnounced = true
+                                emitSafely(ev)
+                            }
+                        }
                     }
                     if (!failed) emitSafely(StreamEvent.Done)
                 }
