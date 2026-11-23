@@ -236,6 +236,13 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         )
         return listOfNotNull(
             "Today's date is $today.",
+            if (s.webSearch) {
+                "You have live web search. Use it whenever the user asks about " +
+                    "anything current — news, release dates, prices, scores, " +
+                    "recent events — and cite your sources."
+            } else {
+                null
+            },
             s.systemPrompt.trim().takeIf { it.isNotBlank() },
         ).joinToString("\n\n")
     }
@@ -244,7 +251,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         conv: Conversation,
         s: AppSettings,
         level: ThinkingLevel = s.thinkingLevel,
-        isRetry: Boolean = false,
+        retryStep: Int = 0,
     ) {
         val assistant = ChatMessage(
             role = Role.ASSISTANT,
@@ -334,12 +341,29 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 _ui.update { it.copy(streaming = false) }
                 persist()
 
-                // A 400 likely means the model rejected the thinking params or
-                // the web-search tool — strip both and retry once so chats
-                // never brick on an unsupported feature.
-                val shouldRetry = failure != null && failureCode == 400 &&
-                    !isRetry && (level != ThinkingLevel.OFF || s.webSearch)
-                if (shouldRetry) {
+                // A 400 means the model/gateway rejected a request feature.
+                // Strip ONE feature per retry (keyword-aware when the error
+                // says which), max two attempts — so a thinking rejection
+                // never silently kills web search, and vice versa.
+                val fail400 = failure != null && failureCode == 400
+                if (fail400 && retryStep < 2) {
+                    val msgL = (failure ?: "").lowercase()
+                    val toolsBad = msgL.contains("tool") || msgL.contains("web_search")
+                    val thinkingBad = msgL.contains("thinking") ||
+                        msgL.contains("reasoning") || msgL.contains("effort") ||
+                        msgL.contains("budget")
+                    var stripThinking = false
+                    var stripTools = false
+                    when {
+                        retryStep == 0 && toolsBad && s.webSearch -> stripTools = true
+                        retryStep == 0 && thinkingBad && level != ThinkingLevel.OFF -> stripThinking = true
+                        retryStep == 0 && level != ThinkingLevel.OFF -> stripThinking = true
+                        retryStep == 0 && s.webSearch -> stripTools = true
+                        retryStep == 1 && level != ThinkingLevel.OFF -> stripThinking = true
+                        retryStep == 1 && s.webSearch -> stripTools = true
+                    }
+                    val shouldRetry = stripThinking || stripTools
+                    if (shouldRetry) {
                     val convNow = _ui.value.conversations.find { it.id == withAssistant.id }
                     if (convNow != null) {
                         var msgs = convNow.messages
@@ -353,11 +377,12 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                         replaceConversation(cleaned)
                         runAssistant(
                             cleaned,
-                            s.copy(webSearch = false),
-                            level = ThinkingLevel.OFF,
-                            isRetry = true,
+                            s.copy(webSearch = if (stripTools) false else s.webSearch),
+                            level = if (stripThinking) ThinkingLevel.OFF else level,
+                            retryStep = retryStep + 1,
                         )
                     }
+                }
                 }
             }
         }

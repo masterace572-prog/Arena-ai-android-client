@@ -304,7 +304,14 @@ class ArenaClient {
                     ?.optJSONObject("usage")?.optInt("input_tokens", -1)?.takeIf { it >= 0 }
                 listOfNotNull<StreamEvent>(input?.let { StreamEvent.Usage(input = it) })
             }
-            "content_block_start" -> emptyList() // block kind is implied by each delta
+            "content_block_start" -> {
+                val block = obj.optJSONObject("content_block")
+                if (block != null && block.optString("type") == "server_tool_use") {
+                    listOf(StreamEvent.Thinking("\n🔍 Searching the web…\n"))
+                } else {
+                    emptyList() // block kind is implied by each delta
+                }
+            }
             "content_block_delta" -> {
                 val delta = obj.optJSONObject("delta") ?: return emptyList()
                 when (delta.optString("type")) {
