@@ -59,6 +59,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -207,7 +208,7 @@ private fun buildInline(
             val mdUrl = m.groupValues.getOrNull(3).orEmpty()
             val linkStyle = SpanStyle(
                 color = linkColor,
-                textDecoration = androidx.compose.ui.text.style.TextUnderline,
+                textDecoration = TextDecoration.Underline,
             )
             when {
                 token.startsWith("**") -> withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) {
