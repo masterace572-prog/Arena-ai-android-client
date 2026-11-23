@@ -21,11 +21,11 @@ val Sparkle: ImageVector by lazy {
         viewportHeight = 24f,
     ).apply {
         path(fill = SolidColor(Color.Black)) {
-            moveTo(12f, 1.8f)
-            cubicTo(12.95f, 6.55f, 17.45f, 11.05f, 22.2f, 12f)
-            cubicTo(17.45f, 12.95f, 12.95f, 17.45f, 12f, 22.2f)
-            cubicTo(11.05f, 17.45f, 6.55f, 12.95f, 1.8f, 12f)
-            cubicTo(6.55f, 11.05f, 11.05f, 6.55f, 12f, 1.8f)
+            moveTo(12f, 2f)
+            quadTo(13.2f, 10.8f, 22f, 12f)
+            quadTo(13.2f, 13.2f, 12f, 22f)
+            quadTo(10.8f, 13.2f, 2f, 12f)
+            quadTo(10.8f, 10.8f, 12f, 2f)
             close()
         }
     }.build()
