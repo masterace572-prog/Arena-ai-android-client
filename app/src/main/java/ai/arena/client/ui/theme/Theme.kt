@@ -46,8 +46,11 @@ object Palette {
 
     // Shared accents
     val Green = Color(0xFF4ADE80)
+    val Success = Green
     val Warning = Color(0xFFFBBF24)
     val Error = Color(0xFFF87171)
+    val ThinkingDark = Color(0xFF1B1B1B)
+    val ThinkingLight = Color(0xFFF5F5F5)
     val CodeDark = Color(0xFF1B1B1B)
     val CodeLight = Color(0xFFF4F4F4)
 }
