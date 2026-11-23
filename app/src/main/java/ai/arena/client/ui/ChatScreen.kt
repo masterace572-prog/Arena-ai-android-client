@@ -64,6 +64,7 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -352,6 +353,7 @@ private fun MessageList(
     onRegenerate: () -> Unit,
 ) {
     val scroll = rememberLazyListState()
+    val scope = rememberCoroutineScope()
     val reversed = remember(messages) { messages.asReversed() }
 
     val lastContent = messages.lastOrNull()?.content
@@ -403,6 +405,36 @@ private fun MessageList(
                         onToggleThinking = { onToggleThinking(message.id) },
                         onRegenerate = onRegenerate,
                     )
+                }
+            }
+        }
+
+        val atBottom by remember {
+            derivedStateOf {
+                scroll.firstVisibleItemIndex <= 0 && scroll.firstVisibleItemScrollOffset < 80
+            }
+        }
+        if (!atBottom && messages.isNotEmpty()) {
+            Box(modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp)) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    shadowElevation = 6.dp,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .clickable {
+                            scope.launch { scroll.animateScrollToItem(0) }
+                        },
+                ) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowDown,
+                            contentDescription = "Jump to latest",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
                 }
             }
         }

@@ -38,6 +38,7 @@ data class StreamRequest(
     val system: String,
     val temperature: Float,
     val thinkingLevel: ThinkingLevel,
+    val webSearch: Boolean = false,
     val turns: List<ChatTurn>,
 )
 
@@ -124,6 +125,11 @@ class ArenaClient {
         if (req.thinkingLevel != ThinkingLevel.OFF) {
             body.put("reasoning_effort", req.thinkingLevel.name.lowercase())
         }
+        if (req.webSearch) {
+            // Server-side web search. If a model or gateway rejects the tool,
+            // the HTTP 400 auto-retry strips it and the chat continues.
+            body.put("tools", JSONArray().put(JSONObject().put("type", "web_search")))
+        }
         return body.toString()
     }
 
@@ -153,6 +159,19 @@ class ArenaClient {
             body.put(
                 "thinking",
                 JSONObject().put("type", "enabled").put("budget_tokens", budget),
+            )
+        }
+        if (req.webSearch) {
+            // Anthropic server-side web search tool — the model can look things
+            // up online and cite them. Auto-stripped on a 400 if unsupported.
+            body.put(
+                "tools",
+                JSONArray().put(
+                    JSONObject()
+                        .put("type", "web_search_20250305")
+                        .put("name", "web_search")
+                        .put("max_uses", 3),
+                ),
             )
         }
         return body.toString()

@@ -43,6 +43,8 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -105,7 +107,7 @@ fun SettingsScreen(vm: ChatViewModel) {
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             item {
-                SectionBlock("Credits") { CreditsCard() }
+                SectionBlock("Billing") { BillingCard() }
             }
             item {
                 SectionBlock("Connection") { ConnectionCard(vm, ui.conn) }
@@ -116,9 +118,11 @@ fun SettingsScreen(vm: ChatViewModel) {
                         format = settings.format,
                         systemPrompt = settings.systemPrompt,
                         temperature = settings.temperature,
+                        webSearch = settings.webSearch,
                         onFormat = { f -> vm.updateSettings { it.copy(format = f) } },
                         onSystem = { s -> vm.updateSettings { it.copy(systemPrompt = s) } },
                         onTemperature = { t -> vm.updateSettings { it.copy(temperature = t) } },
+                        onWebSearch = { w -> vm.updateSettings { it.copy(webSearch = w) } },
                     )
                 }
             }
@@ -155,82 +159,35 @@ private fun SectionBlock(title: String, content: @Composable () -> Unit) {
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun CreditsCard() {
-    SectionCard(title = "Balance") {
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(
-                text = "$50.00",
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(Modifier.size(8.dp))
-            Text(
-                text = "USD",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 6.dp),
-            )
-        }
-        Spacer(Modifier.size(4.dp))
-        Text(
-            text = "Promotional · expires Dec 22 · covers Arena Router",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+private fun BillingCard() {
+    val context = LocalContext.current
 
-        Spacer(Modifier.size(16.dp))
-
-        BalanceRow(
-            color = Color(0xFF4ADE80),
-            name = "Arena Router",
-            amount = "$50.00",
-            sub = "Your current model",
-        )
-        Spacer(Modifier.size(10.dp))
-        BalanceRow(
-            color = Color(0xFF4A7EEA),
-            name = "All models",
-            amount = "$0.00",
-            sub = "Add funds on the dashboard for direct models",
-        )
-
-        Spacer(Modifier.size(12.dp))
-        Text(
-            text = "Balance from your Arena dashboard · connection tests stay free",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-        )
-    }
-}
-
-@Composable
-private fun BalanceRow(color: Color, name: String, amount: String, sub: String) {
-    Row(verticalAlignment = Alignment.Top) {
-        Box(
+    SectionCard(
+        title = "Balance",
+        caption = "Your live balance and spend are shown in the Arena dashboard, so the numbers are always accurate.",
+    ) {
+        Row(
             modifier = Modifier
-                .size(9.dp)
-                .clip(CircleShape)
-                .background(color)
-                .padding(top = 0.dp),
-        )
-        Spacer(Modifier.size(10.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    text = amount,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-            Spacer(Modifier.size(2.dp))
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .clickable {
+                    runCatching {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse("https://platform.arena.ai/dashboard")),
+                        )
+                    }
+                }
+                .padding(vertical = 8.dp, horizontal = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                text = sub,
+                text = "Open Arena dashboard",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "platform.arena.ai",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -332,9 +289,11 @@ private fun ChatSettingsCard(
     format: ApiFormat,
     systemPrompt: String,
     temperature: Float,
+    webSearch: Boolean,
     onFormat: (ApiFormat) -> Unit,
     onSystem: (String) -> Unit,
     onTemperature: (Float) -> Unit,
+    onWebSearch: (Boolean) -> Unit,
 ) {
     var promptDraft by remember(systemPrompt) { mutableStateOf(systemPrompt) }
     val sliderValue = if (temperature < 0f) 0.7f else temperature
@@ -397,6 +356,33 @@ private fun ChatSettingsCard(
                 text = "Anthropic",
                 selected = format == ApiFormat.ANTHROPIC,
                 onClick = { onFormat(ApiFormat.ANTHROPIC) },
+            )
+        }
+
+        Spacer(Modifier.size(18.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Web search",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(Modifier.size(2.dp))
+                Text(
+                    text = "Lets the model look things up online. Falls back automatically if a model can't.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.size(12.dp))
+            Switch(
+                checked = webSearch,
+                onCheckedChange = onWebSearch,
+                colors = SwitchDefaults.colors(
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                ),
             )
         }
 

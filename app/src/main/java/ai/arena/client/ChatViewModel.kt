@@ -226,6 +226,20 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         persist()
     }
 
+    /**
+     * Always tells the model today's date so "what's today's date?" and
+     * anything time-sensitive works without the user having to say it.
+     */
+    private fun buildSystemPrompt(s: AppSettings): String {
+        val today = java.time.LocalDate.now().format(
+            java.time.format.DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", java.util.Locale.ENGLISH),
+        )
+        return listOfNotNull(
+            "Today's date is $today.",
+            s.systemPrompt.trim().takeIf { it.isNotBlank() },
+        ).joinToString("\n\n")
+    }
+
     private fun runAssistant(
         conv: Conversation,
         s: AppSettings,
@@ -262,9 +276,10 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             apiKey = s.apiKey,
             format = s.format,
             model = s.model,
-            system = s.systemPrompt.trim(),
+            system = buildSystemPrompt(s),
             temperature = s.temperature,
             thinkingLevel = level,
+            webSearch = s.webSearch,
             turns = turns,
         )
 
@@ -319,11 +334,11 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 _ui.update { it.copy(streaming = false) }
                 persist()
 
-                // A 400 with thinking params enabled likely means the model
-                // rejected reasoning_effort / thinking budget — strip them and
-                // retry once so chats never brick.
+                // A 400 likely means the model rejected the thinking params or
+                // the web-search tool — strip both and retry once so chats
+                // never brick on an unsupported feature.
                 val shouldRetry = failure != null && failureCode == 400 &&
-                    level != ThinkingLevel.OFF && !isRetry
+                    !isRetry && (level != ThinkingLevel.OFF || s.webSearch)
                 if (shouldRetry) {
                     val convNow = _ui.value.conversations.find { it.id == withAssistant.id }
                     if (convNow != null) {
@@ -336,7 +351,12 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                             updatedAt = System.currentTimeMillis(),
                         )
                         replaceConversation(cleaned)
-                        runAssistant(cleaned, s, level = ThinkingLevel.OFF, isRetry = true)
+                        runAssistant(
+                            cleaned,
+                            s.copy(webSearch = false),
+                            level = ThinkingLevel.OFF,
+                            isRetry = true,
+                        )
                     }
                 }
             }

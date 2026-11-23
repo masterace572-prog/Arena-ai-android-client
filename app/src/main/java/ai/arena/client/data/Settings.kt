@@ -37,6 +37,7 @@ data class AppSettings(
     val thinkingLevel: ThinkingLevel = ThinkingLevel.MEDIUM,
     val systemPrompt: String = "",
     val temperature: Float = -1f, // -1 = provider default
+    val webSearch: Boolean = true,
 ) {
     companion object {
         const val DEFAULT_GATEWAY = "https://api.arena.ai"
@@ -62,6 +63,7 @@ class SettingsStore(private val context: Context) {
         val SYSTEM_PROMPT = stringPreferencesKey("system_prompt")
         val TEMPERATURE = floatPreferencesKey("temperature")
         val MIGRATED_V2 = booleanPreferencesKey("migrated_v2")
+        val WEB_SEARCH = booleanPreferencesKey("web_search")
     }
 
     /** One-time v2 defaults: thinking shown, medium level, Anthropic format, built-in key. */
@@ -90,6 +92,7 @@ class SettingsStore(private val context: Context) {
                 ?: ThinkingLevel.OFF,
             systemPrompt = p[Keys.SYSTEM_PROMPT] ?: "",
             temperature = p[Keys.TEMPERATURE] ?: -1f,
+            webSearch = p[Keys.WEB_SEARCH] ?: true,
         )
     }
 
@@ -116,6 +119,7 @@ class SettingsStore(private val context: Context) {
             p[Keys.THINKING_LEVEL] = next.thinkingLevel.name
             p[Keys.SYSTEM_PROMPT] = next.systemPrompt
             p[Keys.TEMPERATURE] = next.temperature
+            p[Keys.WEB_SEARCH] = next.webSearch
         }
     }
 }
