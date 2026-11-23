@@ -277,7 +277,7 @@ class ArenaException(message: String) : Exception(message)
  * Suspends when the collector is slow (real backpressure instead of dropping),
  * and quietly ignores events after the channel has closed.
  */
-private suspend fun kotlinx.coroutines.ProducerScope<StreamEvent>.emitSafely(event: StreamEvent) {
+private suspend fun kotlinx.coroutines.channels.ProducerScope<StreamEvent>.emitSafely(event: StreamEvent) {
     try {
         send(event)
     } catch (e: CancellationException) {

@@ -133,7 +133,7 @@ private fun buildInline(text: String, codeBg: Color, codeFg: Color): AnnotatedSt
             val token = m.value
             when {
                 token.startsWith("**") -> withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) {
-                    append(token.removeSurround("**"))
+                    append(token.removePrefix("**").removeSuffix("**"))
                 }
                 else -> withStyle(
                     SpanStyle(
@@ -216,9 +216,7 @@ private fun CodeBlock(lang: String, code: String) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
-                ActionPill(text = "Copy") {
-                    clipboard.setText(AnnotatedString(code))
-                }
+                ActionPill(text = "Copy", onClick = { clipboard.setText(AnnotatedString(code)) })
             }
             Text(
                 text = code,
@@ -427,9 +425,7 @@ fun AssistantMessage(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ActionPill(text = "Copy") {
-                    clipboard.setText(AnnotatedString(message.content))
-                }
+                ActionPill(text = "Copy", onClick = { clipboard.setText(AnnotatedString(message.content)) })
                 if (isLast) {
                     ActionPill(text = "Regenerate", onClick = onRegenerate)
                 }
