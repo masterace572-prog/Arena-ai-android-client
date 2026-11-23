@@ -162,7 +162,7 @@ class ArenaClient {
                     if (!response.isSuccessful) {
                         failed = true
                         val body = response.body?.string().orEmpty()
-                        trySendBlocking(
+                        emitSafely(
                             StreamEvent.Error(
                                 errorMessage(response.code, body, response.header("Retry-After")),
                             ),
@@ -183,23 +183,23 @@ class ArenaClient {
                                 if (payload == "[DONE]") {
                                     done = true
                                 } else {
-                                    parse(payload).forEach { trySendBlocking(it) }
+                                    parse(payload).forEach { emitSafely(it) }
                                 }
                             }
                             else -> { // event:, id:, retry:, comments
                             }
                         }
                     }
-                    if (!failed) trySendBlocking(StreamEvent.Done)
+                    if (!failed) emitSafely(StreamEvent.Done)
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: IOException) {
                 if (!call.isCanceled() && !failed) {
-                    trySendBlocking(StreamEvent.Error("Network error: ${e.message ?: "connection lost"}"))
+                    emitSafely(StreamEvent.Error("Network error: ${e.message ?: "connection lost"}"))
                 }
             } catch (e: Exception) {
-                if (!failed) trySendBlocking(StreamEvent.Error(e.message ?: "Unexpected error"))
+                if (!failed) emitSafely(StreamEvent.Error(e.message ?: "Unexpected error"))
             } finally {
                 this@channelFlow.close()
             }
@@ -272,6 +272,20 @@ class ArenaClient {
 }
 
 class ArenaException(message: String) : Exception(message)
+
+/**
+ * Suspends when the collector is slow (real backpressure instead of dropping),
+ * and quietly ignores events after the channel has closed.
+ */
+private suspend fun kotlinx.coroutines.ProducerScope<StreamEvent>.emitSafely(event: StreamEvent) {
+    try {
+        send(event)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        // Channel closed — nothing left to deliver.
+    }
+}
 
 internal fun normalizeGateway(raw: String): String {
     var g = raw.trim().trimEnd('/')
