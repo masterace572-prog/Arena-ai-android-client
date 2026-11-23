@@ -74,3 +74,13 @@ jobs:
           git add -f Arena-Android-v1.0.0.apk
           git commit -m "APK for $GITHUB_SHA"
           git push --force origin HEAD:apk
+
+      - name: Attach APK to GitHub Release
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v1.0.0" app/build/outputs/apk/release/app-release.apk \
+            --title "Arena Android Client v1.0.0" \
+            --notes "Streaming Arena API client — thinking collapse, model picker, free connection test. Package: ai.arena.client" \
+            || gh release upload "v1.0.0" app/build/outputs/apk/release/app-release.apk --clobber

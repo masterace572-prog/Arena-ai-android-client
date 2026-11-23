@@ -30,8 +30,10 @@ A premium, fully-offline-UI Android client for the [Arena API](https://platform.
 The repo ships with [`.github/workflows/build-apk.yml`](.github/workflows/build-apk.yml):
 
 1. Push to `main` (or open a PR) — or run the workflow manually from the **Actions** tab.
-2. When the run finishes, download the **`Arena-Android-APK`** artifact.
-3. Install on device: `adb install app-release.apk` (or open the APK on the phone).
+2. When the run finishes, download the **`Arena-Android-APK`** artifact from the run,
+   grab **`Arena-Android-v1.0.0.apk`** from the [`apk`](https://github.com/masterace572-prog/Arena-ai-android-client/tree/apk)
+   branch, or use the [Releases](https://github.com/masterace572-prog/Arena-ai-android-client/releases) page.
+3. Install on device: `adb install Arena-Android-v1.0.0.apk` (or open the APK on the phone).
 
 Local build (needs JDK 17 + Android SDK 35):
 
