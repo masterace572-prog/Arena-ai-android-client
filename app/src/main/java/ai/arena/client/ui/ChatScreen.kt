@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -43,6 +44,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Button
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -151,22 +153,22 @@ private fun ChatTopBar(
     onNewChat: () -> Unit,
     onSettings: () -> Unit,
 ) {
-    TopAppBar(
+    CenterAlignedTopAppBar(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Sparkle,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(17.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp),
                 )
-                Spacer(Modifier.size(8.dp))
+                Spacer(Modifier.size(7.dp))
                 Text(
                     text = "Arena",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
-                Spacer(Modifier.size(10.dp))
+                Spacer(Modifier.size(9.dp))
                 StatusDot(conn, size = 7.dp)
             }
         },
@@ -210,6 +212,13 @@ private fun DrawerContent(
                 modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 22.dp, bottom = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Icon(
+                    imageVector = Sparkle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.size(8.dp))
                 Text(
                     text = "Arena",
                     style = MaterialTheme.typography.titleLarge,
@@ -217,7 +226,7 @@ private fun DrawerContent(
                 )
                 Spacer(Modifier.weight(1f))
                 Text(
-                    text = "v1.0",
+                    text = "v2.0",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -360,34 +369,41 @@ private fun MessageList(
         if (grew || atBottom) scroll.scrollToItem(0)
     }
 
-    if (messages.isEmpty()) {
-        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            EmptyState()
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        if (messages.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                EmptyState()
+            }
+            return@Box
         }
-        return
-    }
 
-    LazyColumn(
-        state = scroll,
-        modifier = modifier.fillMaxSize(),
-        reverseLayout = true,
-        contentPadding = PaddingValues(top = 10.dp, bottom = 14.dp),
-    ) {
-        items(
-            count = reversed.size,
-            key = { reversed[it].id },
-        ) { index ->
-            val message = reversed[index]
-            if (message.role == ai.arena.client.data.Role.USER) {
-                UserBubble(message)
-            } else {
-                AssistantMessage(
-                    message = message,
-                    mode = settings.thinkingMode,
-                    isLast = index == 0,
-                    onToggleThinking = { onToggleThinking(message.id) },
-                    onRegenerate = onRegenerate,
-                )
+        LazyColumn(
+            state = scroll,
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 780.dp),
+            reverseLayout = true,
+            contentPadding = PaddingValues(top = 10.dp, bottom = 14.dp),
+        ) {
+            items(
+                count = reversed.size,
+                key = { reversed[it].id },
+            ) { index ->
+                val message = reversed[index]
+                if (message.role == ai.arena.client.data.Role.USER) {
+                    UserBubble(message)
+                } else {
+                    AssistantMessage(
+                        message = message,
+                        mode = settings.thinkingMode,
+                        isLast = index == 0,
+                        onToggleThinking = { onToggleThinking(message.id) },
+                        onRegenerate = onRegenerate,
+                    )
+                }
             }
         }
     }
@@ -411,14 +427,14 @@ private fun InputBar(
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
     ) {
-        Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 10.dp)) {
+        Column(modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 12.dp)) {
             Row(
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Surface(
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(28.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     border = BorderStroke(
                         1.dp,
@@ -449,7 +465,7 @@ private fun InputBar(
                             },
                         ),
                         decorationBox = { inner ->
-                            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 13.dp)) {
+                            Box(modifier = Modifier.padding(horizontal = 18.dp, vertical = 15.dp)) {
                                 if (text.isEmpty()) {
                                     Text(
                                         text = "Message Arena",

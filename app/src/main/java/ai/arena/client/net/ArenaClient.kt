@@ -21,7 +21,7 @@ sealed interface StreamEvent {
     data class Thinking(val text: String) : StreamEvent
     data class Content(val text: String) : StreamEvent
     data class Usage(val input: Int? = null, val output: Int? = null) : StreamEvent
-    data class Error(val message: String) : StreamEvent
+    data class Error(val message: String, val code: Int? = null) : StreamEvent
     data object Done : StreamEvent
 }
 
@@ -177,7 +177,8 @@ class ArenaClient {
                         val body = response.body?.string().orEmpty()
                         emitSafely(
                             StreamEvent.Error(
-                                errorMessage(response.code, body, response.header("Retry-After")),
+                                message = errorMessage(response.code, body, response.header("Retry-After")),
+                                code = response.code,
                             ),
                         )
                         return@use
@@ -252,7 +253,8 @@ class ArenaClient {
         val obj = runCatching { JSONObject(payload) }.getOrNull() ?: return emptyList()
         obj.optJSONObject("error")?.let { e ->
             val msg = e.optString("message").ifBlank { e.optString("type") }
-            return listOf(StreamEvent.Error(msg.ifBlank { "Request failed" }))
+            val code = if (e.optString("code").contains("invalid_request")) 400 else null
+            return listOf(StreamEvent.Error(msg.ifBlank { "Request failed" }, code))
         }
         val events = mutableListOf<StreamEvent>()
         obj.optJSONObject("usage")?.let { u ->
@@ -306,9 +308,11 @@ class ArenaClient {
                 events
             }
             "error" -> {
-                val msg = obj.optJSONObject("error")?.optString("message")
-                    ?.takeIf { it.isNotBlank() } ?: "Request failed"
-                listOf(StreamEvent.Error(msg))
+                val err = obj.optJSONObject("error")
+                val msg = err?.optString("message")?.takeIf { it.isNotBlank() } ?: "Request failed"
+                val type = err?.optString("type").orEmpty()
+                val code = if (type.contains("invalid_request")) 400 else null
+                listOf(StreamEvent.Error(msg, code))
             }
             else -> emptyList() // ping, content_block_stop, message_stop
         }

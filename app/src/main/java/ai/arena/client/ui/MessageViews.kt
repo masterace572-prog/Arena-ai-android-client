@@ -345,7 +345,8 @@ private fun ThinkingDot(streaming: Boolean) {
     Icon(
         imageVector = Sparkle,
         contentDescription = null,
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        tint = if (streaming) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
             .size(15.dp)
             .alpha(if (streaming) alpha else 1f),
@@ -522,34 +523,41 @@ private fun ErrorCard(message: String, onRetry: (() -> Unit)?) {
 
 @Composable
 fun EmptyState() {
+    val greeting = remember {
+        when (java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)) {
+            in 5..11 -> "Good morning"
+            in 12..17 -> "Good afternoon"
+            else -> "Good evening"
+        }
+    }
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Surface(
-            modifier = Modifier.size(72.dp),
-            shape = RoundedCornerShape(22.dp),
+            modifier = Modifier.size(76.dp),
+            shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentAlignment = Alignment.Center,
         ) {
-            Image(
-                painter = androidx.compose.ui.res.painterResource(
-                    ai.arena.client.R.drawable.ic_launcher_foreground,
-                ),
+            Icon(
+                imageVector = Sparkle,
                 contentDescription = null,
-                modifier = Modifier.padding(16.dp),
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(36.dp),
             )
         }
-        Spacer(Modifier.size(20.dp))
+        Spacer(Modifier.size(24.dp))
         Text(
-            text = "Start a conversation",
-            style = MaterialTheme.typography.headlineSmall,
+            text = greeting,
+            style = MaterialTheme.typography.displaySmall,
             color = MaterialTheme.colorScheme.onBackground,
         )
         Spacer(Modifier.size(8.dp))
         Text(
-            text = "Messages stream live. Reasoning, when the model shares it, collapses into a tidy card.",
-            style = MaterialTheme.typography.bodyMedium,
+            text = "How can I help you today?",
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )

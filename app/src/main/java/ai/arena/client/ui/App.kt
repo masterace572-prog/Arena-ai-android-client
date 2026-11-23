@@ -17,7 +17,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @Composable
 fun AppRoot(vm: ChatViewModel = viewModel()) {
     val ui by vm.ui.collectAsState()
-    val settings by vm.settings.collectAsState()
 
     val onChat = ui.screen == Screen.CHAT
     BackHandler(enabled = !onChat && ui.hasKey) {
@@ -31,8 +30,6 @@ fun AppRoot(vm: ChatViewModel = viewModel()) {
                 .background(MaterialTheme.colorScheme.background),
             contentAlignment = Alignment.Center,
         ) {}
-
-        !ui.hasKey -> OnboardingScreen(vm)
 
         ui.screen == Screen.SETTINGS -> SettingsScreen(vm)
 

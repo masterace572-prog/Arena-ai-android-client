@@ -5,6 +5,7 @@ A premium, fully-offline-UI Android client for the [Arena API](https://platform.
 - **Package:** `ai.arena.client`
 - **App name:** Arena
 - **Requires:** Android 8.1+ (API 26), fully tested target for Android 13+ (API 33–36)
+- **Version:** 2.0.0
 
 ## Features
 
@@ -43,15 +44,21 @@ gradle assembleRelease
 Release builds are signed with the debug key so they install out of the box. For
 distribution, replace with your own keystore via CI secrets.
 
-## Setup in the app
+## Setup
 
-1. Open the app → **Test connection & continue** with your Arena key
-   (create one at [platform.arena.ai/dashboard/keys](https://platform.arena.ai/dashboard/keys)).
-2. The test calls `GET /v1/models` — it does **not** spend your credits.
-3. Pick a model from the chip in the top bar and chat.
+No setup — the API key is **built into the app**; it opens straight into chat behind a
+splash screen. First launch migrates defaults: Anthropic format, thinking **expanded**,
+reasoning level **Medium** (a 400 auto-retries with thinking stripped, so chats never brick).
 
-> Note: chat requests consume your workspace balance exactly like any other API
-> client; the router (`coding-router-preview`) is the most credit-friendly default.
+## v2.0
+
+- Claude-inspired full UI: warm paper/charcoal, terracotta accent, serif display type
+- Splash screen (Android 12+ SplashScreen API) + redesigned sparkle logo
+- Credits card in Settings (router $50 promotional / all-models $0)
+- Settings: connection test, format, system prompt, temperature,
+  thinking display + reasoning level, Telegram contact
+- Live thinking: reasoning streams open while the model works
+- Centered reading column, pill composer, greeting empty state
 
 ## Structure
 

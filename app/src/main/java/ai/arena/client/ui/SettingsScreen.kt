@@ -4,14 +4,19 @@ package ai.arena.client.ui
 
 import ai.arena.client.ChatViewModel
 import ai.arena.client.ConnState
+import ai.arena.client.Screen
 import ai.arena.client.data.ApiFormat
 import ai.arena.client.data.ThinkingLevel
 import ai.arena.client.data.ThinkingMode
 import ai.arena.client.data.normalizeGateway
 import androidx.activity.compose.BackHandler
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -21,10 +26,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -43,28 +48,29 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.util.Locale
+
+// ---------------------------------------------------------------------------
+// Settings — Claude-clean: section labels, flat cards, no clutter
+// ---------------------------------------------------------------------------
 
 @Composable
 fun SettingsScreen(vm: ChatViewModel) {
     val ui by vm.ui.collectAsState()
     val settings by vm.settings.collectAsState()
 
-    BackHandler { vm.setScreen(ai.arena.client.Screen.CHAT) }
+    BackHandler { vm.setScreen(Screen.CHAT) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -78,7 +84,7 @@ fun SettingsScreen(vm: ChatViewModel) {
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { vm.setScreen(ai.arena.client.Screen.CHAT) }) {
+                    IconButton(onClick = { vm.setScreen(Screen.CHAT) }) {
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -94,32 +100,141 @@ fun SettingsScreen(vm: ChatViewModel) {
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 36.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            item { ConnectionCard(vm, ui.conn) }
-            item { ApiKeyCard(vm, settings.apiKey) }
-            item { FormatCard(settings.format) { f -> vm.updateSettings { it.copy(format = f) } } }
             item {
-                ThinkingCard(
-                    mode = settings.thinkingMode,
-                    level = settings.thinkingLevel,
-                    onMode = { m -> vm.updateSettings { it.copy(thinkingMode = m) } },
-                    onLevel = { l -> vm.updateSettings { it.copy(thinkingLevel = l) } },
-                )
+                SectionBlock("Credits") { CreditsCard() }
             }
             item {
-                GenerationCard(
-                    systemPrompt = settings.systemPrompt,
-                    temperature = settings.temperature,
-                    onSystem = { s -> vm.updateSettings { it.copy(systemPrompt = s) } },
-                    onTemperature = { t -> vm.updateSettings { it.copy(temperature = t) } },
-                )
+                SectionBlock("Connection") { ConnectionCard(vm, ui.conn) }
             }
-            item { AboutCard() }
+            item {
+                SectionBlock("Chat") {
+                    ChatSettingsCard(
+                        format = settings.format,
+                        systemPrompt = settings.systemPrompt,
+                        temperature = settings.temperature,
+                        onFormat = { f -> vm.updateSettings { it.copy(format = f) } },
+                        onSystem = { s -> vm.updateSettings { it.copy(systemPrompt = s) } },
+                        onTemperature = { t -> vm.updateSettings { it.copy(temperature = t) } },
+                    )
+                }
+            }
+            item {
+                SectionBlock("Thinking") {
+                    ThinkingCard(
+                        mode = settings.thinkingMode,
+                        level = settings.thinkingLevel,
+                        onMode = { m -> vm.updateSettings { it.copy(thinkingMode = m) } },
+                        onLevel = { l -> vm.updateSettings { it.copy(thinkingLevel = l) } },
+                    )
+                }
+            }
+            item {
+                SectionBlock("About") { AboutCard() }
+            }
         }
     }
+}
 
+@Composable
+private fun SectionBlock(title: String, content: @Composable () -> Unit) {
+    Column {
+        Text(
+            text = title.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+        )
+        content()
+    }
+}
+
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun CreditsCard() {
+    SectionCard(title = "Balance") {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                text = "$50.00",
+                style = MaterialTheme.typography.displaySmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.size(8.dp))
+            Text(
+                text = "USD",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
+        }
+        Spacer(Modifier.size(4.dp))
+        Text(
+            text = "Promotional · expires Dec 22 · covers Arena Router",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Spacer(Modifier.size(16.dp))
+
+        BalanceRow(
+            color = Color(0xFF4ADE80),
+            name = "Arena Router",
+            amount = "$50.00",
+            sub = "Your current model",
+        )
+        Spacer(Modifier.size(10.dp))
+        BalanceRow(
+            color = Color(0xFF4A7EEA),
+            name = "All models",
+            amount = "$0.00",
+            sub = "Add funds on the dashboard for direct models",
+        )
+
+        Spacer(Modifier.size(12.dp))
+        Text(
+            text = "Balance from your Arena dashboard · connection tests stay free",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+        )
+    }
+}
+
+@Composable
+private fun BalanceRow(color: Color, name: String, amount: String, sub: String) {
+    Row(verticalAlignment = Alignment.Top) {
+        Box(
+            modifier = Modifier
+                .size(9.dp)
+                .clip(CircleShape)
+                .background(color)
+                .padding(top = 0.dp),
+        )
+        Spacer(Modifier.size(10.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = amount,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            Spacer(Modifier.size(2.dp))
+            Text(
+                text = sub,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -129,9 +244,11 @@ private fun ConnectionCard(vm: ChatViewModel, conn: ConnState) {
     val settings by vm.settings.collectAsState()
     var gatewayDraft by remember(settings.gateway) { mutableStateOf(settings.gateway) }
     val testing = conn is ConnState.Testing
-    val hasKey = settings.apiKey.isNotBlank()
 
-    SectionCard(title = "Connection", caption = "Test uses GET /v1/models only — free, 0 credits spent.") {
+    SectionCard(
+        title = "Connection",
+        caption = "GET /v1/models only — free, 0 credits spent.",
+    ) {
         OutlinedTextField(
             value = gatewayDraft,
             onValueChange = { v ->
@@ -154,7 +271,7 @@ private fun ConnectionCard(vm: ChatViewModel, conn: ConnState) {
         ) {
             Button(
                 onClick = vm::testConnection,
-                enabled = hasKey && !testing,
+                enabled = !testing,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -190,7 +307,6 @@ private fun ConnectionCard(vm: ChatViewModel, conn: ConnState) {
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.error,
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
                 is ConnState.Testing -> Text(
@@ -199,7 +315,7 @@ private fun ConnectionCard(vm: ChatViewModel, conn: ConnState) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 is ConnState.Unknown -> Text(
-                    text = if (hasKey) "Not tested yet" else "Add your API key first",
+                    text = "Not tested yet",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -211,137 +327,80 @@ private fun ConnectionCard(vm: ChatViewModel, conn: ConnState) {
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun ApiKeyCard(vm: ChatViewModel, apiKey: String) {
-    var show by remember { mutableStateOf(false) }
-    var draft by remember(apiKey) { mutableStateOf(apiKey) }
-
-    SectionCard(title = "API key", caption = "Stored on this device only. Create keys in the Arena dashboard.") {
-        OutlinedTextField(
-            value = draft,
-            onValueChange = { v ->
-                draft = v
-                vm.updateSettings { it.copy(apiKey = v.trim()) }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Arena API key") },
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            visualTransformation = if (show) VisualTransformation.None
-            else PasswordVisualTransformation(),
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = ImeAction.Done),
-            trailingIcon = {
-                TextButton(onClick = { show = !show }) {
-                    Text(
-                        text = if (show) "Hide" else "Show",
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                }
-            },
-            colors = fieldColors(),
-        )
-        if (apiKey.isNotBlank()) {
-            Spacer(Modifier.size(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Spacer(Modifier.weight(1f))
-                TextButton(onClick = {
-                    vm.updateSettings { it.copy(apiKey = "") }
-                }) {
-                    Text(
-                        text = "Remove key",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-            }
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-
-@Composable
-private fun FormatCard(format: ApiFormat, onChange: (ApiFormat) -> Unit) {
-    SectionCard(
-        title = "API format",
-        caption = "Both are supported by the Arena gateway. Switch if a model behaves oddly.",
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SelectPill(
-                text = "OpenAI",
-                selected = format == ApiFormat.OPENAI,
-                onClick = { onChange(ApiFormat.OPENAI) },
-            )
-            SelectPill(
-                text = "Anthropic",
-                selected = format == ApiFormat.ANTHROPIC,
-                onClick = { onChange(ApiFormat.ANTHROPIC) },
-            )
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-
-@Composable
-private fun ThinkingCard(
-    mode: ThinkingMode,
-    level: ThinkingLevel,
-    onMode: (ThinkingMode) -> Unit,
-    onLevel: (ThinkingLevel) -> Unit,
-) {
-    SectionCard(
-        title = "Thinking",
-        caption = "Reasoning appears only when the API returns it. Collapsed keeps chat clean.",
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ThinkingMode.entries.forEach { m ->
-                SelectPill(
-                    text = m.label,
-                    selected = mode == m,
-                    onClick = { onMode(m) },
-                )
-            }
-        }
-
-        Spacer(Modifier.size(16.dp))
-
-        Text(
-            text = "Thinking level",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(Modifier.size(4.dp))
-        Text(
-            text = "Off = default. Higher levels reason longer and use more tokens.",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.size(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ThinkingLevel.entries.forEach { l ->
-                SelectPill(
-                    text = l.label,
-                    selected = level == l,
-                    onClick = { onLevel(l) },
-                )
-            }
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-
-@Composable
-private fun GenerationCard(
+private fun ChatSettingsCard(
+    format: ApiFormat,
     systemPrompt: String,
     temperature: Float,
+    onFormat: (ApiFormat) -> Unit,
     onSystem: (String) -> Unit,
     onTemperature: (Float) -> Unit,
 ) {
     var promptDraft by remember(systemPrompt) { mutableStateOf(systemPrompt) }
     val sliderValue = if (temperature < 0f) 0.7f else temperature
 
-    SectionCard(title = "Generation") {
+    SectionCard(title = "Chat") {
+        // Fixed model — informational only
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Sparkle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.size(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Arena Router",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(Modifier.size(2.dp))
+                    Text(
+                        text = "coding-router-preview · auto-picks the best model",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.size(16.dp))
+
+        Text(
+            text = "API format",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.size(4.dp))
+        Text(
+            text = "Anthropic returns thinking blocks natively.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.size(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SelectPill(
+                text = "OpenAI",
+                selected = format == ApiFormat.OPENAI,
+                onClick = { onFormat(ApiFormat.OPENAI) },
+            )
+            SelectPill(
+                text = "Anthropic",
+                selected = format == ApiFormat.ANTHROPIC,
+                onClick = { onFormat(ApiFormat.ANTHROPIC) },
+            )
+        }
+
+        Spacer(Modifier.size(18.dp))
+
         OutlinedTextField(
             value = promptDraft,
             onValueChange = { v ->
@@ -388,7 +447,64 @@ private fun GenerationCard(
 // ---------------------------------------------------------------------------
 
 @Composable
+private fun ThinkingCard(
+    mode: ThinkingMode,
+    level: ThinkingLevel,
+    onMode: (ThinkingMode) -> Unit,
+    onLevel: (ThinkingLevel) -> Unit,
+) {
+    SectionCard(
+        title = "Thinking",
+        caption = "Reasoning streams live while the model works.",
+    ) {
+        Text(
+            text = "Display",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.size(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ThinkingMode.entries.forEach { m ->
+                SelectPill(
+                    text = m.label,
+                    selected = mode == m,
+                    onClick = { onMode(m) },
+                )
+            }
+        }
+
+        Spacer(Modifier.size(18.dp))
+
+        Text(
+            text = "Reasoning level",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.size(4.dp))
+        Text(
+            text = "Higher levels think longer and use more tokens. Auto-falls back if a model rejects it.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.size(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ThinkingLevel.entries.forEach { l ->
+                SelectPill(
+                    text = l.label,
+                    selected = level == l,
+                    onClick = { onLevel(l) },
+                )
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+
+@Composable
 private fun AboutCard() {
+    val context = LocalContext.current
+
     SectionCard(title = "About") {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -398,17 +514,43 @@ private fun AboutCard() {
             )
             Spacer(Modifier.weight(1f))
             Text(
-                text = "v1.0.0",
+                text = "v2.0.0",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Spacer(Modifier.size(6.dp))
         Text(
-            text = "ai.arena.client · OpenAI & Anthropic formats · Key and chats stay on this device.",
+            text = "ai.arena.client · API key built in — nothing to enter.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Spacer(Modifier.size(10.dp))
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable {
+                    runCatching {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/libAkAudioVisiual")),
+                        )
+                    }
+                }
+                .padding(vertical = 4.dp, horizontal = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Telegram",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.size(8.dp))
+            Text(
+                text = "@libAkAudioVisiual",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
     }
 }
 

@@ -15,91 +15,95 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Mirrors platform.arena.ai: warm-neutral charcoal, hairline borders,
- * serif display headings, white primary buttons, green status accent.
- * Flat fills only — no gradients.
+ * Claude-inspired: warm paper light / warm charcoal dark, terracotta accent,
+ * serif display type, flat fills only — no gradients.
  */
 object Palette {
-    // Dark (neutral, matching the Arena dashboard)
-    val DarkBg = Color(0xFF161616)
-    val DarkSurface = Color(0xFF1D1D1D)
-    val DarkSurfaceLow = Color(0xFF191919)
-    val DarkSurfaceHigh = Color(0xFF242424)
-    val DarkSurfaceHighest = Color(0xFF2C2C2C)
-    val DarkOutline = Color(0xFF2E2E2E)
-    val DarkOutlineVariant = Color(0xFF262626)
-    val DarkOnSurface = Color(0xFFEDEDED)
-    val DarkSecondary = Color(0xFF9B9B9B)
-    val DarkTertiary = Color(0xFF737373)
+    // Warm light (paper)
+    val Paper = Color(0xFFFAF9F6)
+    val CardLight = Color(0xFFFFFFFF)
+    val CardHighLight = Color(0xFFF2F0EA)
+    val CardHighestLight = Color(0xFFE9E6DE)
+    val InkLight = Color(0xFF1F1E1C)
+    val InkSoftLight = Color(0xFF75736C)
+    val InkFaintLight = Color(0xFF9C998F)
+    val LineLight = Color(0xFFE6E3DB)
 
-    // Light
-    val LightBg = Color(0xFFFAFAFA)
-    val LightSurface = Color(0xFFFFFFFF)
-    val LightSurfaceLow = Color(0xFFFFFFFF)
-    val LightSurfaceHigh = Color(0xFFF2F2F2)
-    val LightSurfaceHighest = Color(0xFFE9E9E9)
-    val LightOutline = Color(0xFFE4E4E4)
-    val LightOutlineVariant = Color(0xFFECECEC)
-    val LightOnSurface = Color(0xFF161616)
-    val LightSecondary = Color(0xFF5C5C5C)
-    val LightTertiary = Color(0xFF8A8A8A)
+    // Warm charcoal (dark)
+    val Charcoal = Color(0xFF1C1B19)
+    val CardDark = Color(0xFF262523)
+    val CardHighDark = Color(0xFF32302D)
+    val CardHighestDark = Color(0xFF3B3936)
+    val InkDark = Color(0xFFF2F0EA)
+    val InkSoftDark = Color(0xFFA5A199)
+    val InkFaintDark = Color(0xFF7D7A72)
+    val LineDark = Color(0xFF3B3936)
 
-    // Shared accents
+    // Terracotta accent (Claude-like)
+    val Terracotta = Color(0xFFC96442)
+    val TerracottaDark = Color(0xFFD97757)
+    val TerracottaSoft = Color(0xFFF4E4DC)
+
+    // Status
     val Green = Color(0xFF4ADE80)
     val Success = Green
     val Warning = Color(0xFFFBBF24)
     val Error = Color(0xFFF87171)
-    val ThinkingDark = Color(0xFF1B1B1B)
-    val ThinkingLight = Color(0xFFF5F5F5)
-    val CodeDark = Color(0xFF1B1B1B)
-    val CodeLight = Color(0xFFF4F4F4)
+
+    // Message surfaces
+    val UserBubbleLight = Color(0xFFEFEEE8)
+    val UserBubbleDark = Color(0xFF32302D)
+    val ThinkingLight = Color(0xFFF6F4EE)
+    val ThinkingDark = Color(0xFF242321)
+    val CodeLight = Color(0xFFF4F2EC)
+    val CodeDark = Color(0xFF242321)
 }
 
 private val DarkScheme = darkColorScheme(
-    primary = Color(0xFFFFFFFF), // white buttons, like "Add funds"
-    onPrimary = Color(0xFF111111),
-    primaryContainer = Color(0xFF2A2A2A),
-    onPrimaryContainer = Color(0xFFEDEDED),
-    secondary = Palette.DarkSecondary,
-    onSecondary = Color(0xFFFFFFFF),
-    background = Palette.DarkBg,
-    onBackground = Palette.DarkOnSurface,
-    surface = Palette.DarkSurface,
-    onSurface = Palette.DarkOnSurface,
-    surfaceVariant = Palette.DarkSurfaceHigh,
-    onSurfaceVariant = Palette.DarkSecondary,
-    surfaceContainerLowest = Palette.DarkSurfaceLow,
-    surfaceContainerLow = Palette.DarkSurface,
-    surfaceContainer = Color(0xFF1F1F1F),
-    surfaceContainerHigh = Palette.DarkSurfaceHigh,
-    surfaceContainerHighest = Palette.DarkSurfaceHighest,
-    outline = Palette.DarkOutline,
-    outlineVariant = Palette.DarkOutlineVariant,
+    primary = Palette.TerracottaDark,
+    onPrimary = Color(0xFF1C1B19),
+    primaryContainer = Palette.UserBubbleDark,
+    onPrimaryContainer = Palette.InkDark,
+    secondary = Palette.InkSoftDark,
+    onSecondary = Color(0xFF1C1B19),
+    background = Palette.Charcoal,
+    onBackground = Palette.InkDark,
+    surface = Palette.CardDark,
+    onSurface = Palette.InkDark,
+    surfaceVariant = Palette.CardHighDark,
+    onSurfaceVariant = Palette.InkSoftDark,
+    surfaceContainerLowest = Color(0xFF181715),
+    surfaceContainerLow = Palette.Charcoal,
+    surfaceContainer = Palette.CardDark,
+    surfaceContainerHigh = Palette.CardHighDark,
+    surfaceContainerHighest = Palette.CardHighestDark,
+    outline = Palette.LineDark,
+    outlineVariant = Palette.LineDark,
     error = Palette.Error,
     onError = Color(0xFF1A0A0A),
     scrim = Color(0xFF000000),
 )
 
 private val LightScheme = lightColorScheme(
-    primary = Color(0xFF161616), // black buttons on light, same as dashboard
+    primary = Palette.Terracotta,
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFEDEDED),
-    onPrimaryContainer = Color(0xFF161616),
-    secondary = Palette.LightSecondary,
+    primaryContainer = Palette.TerracottaSoft,
+    onPrimaryContainer = Color(0xFF6B2F1B),
+    secondary = Palette.InkSoftLight,
     onSecondary = Color(0xFFFFFFFF),
-    background = Palette.LightBg,
-    onBackground = Palette.LightOnSurface,
-    surface = Palette.LightSurface,
-    onSurface = Palette.LightOnSurface,
-    surfaceVariant = Palette.LightSurfaceHigh,
-    onSurfaceVariant = Palette.LightSecondary,
-    surfaceContainerLowest = Palette.LightSurfaceLow,
-    surfaceContainerLow = Palette.LightSurface,
-    surfaceContainer = Palette.LightSurface,
-    surfaceContainerHigh = Palette.LightSurfaceHigh,
-    surfaceContainerHighest = Palette.LightSurfaceHighest,
-    outline = Palette.LightOutline,
-    outlineVariant = Palette.LightOutlineVariant,
+    background = Palette.Paper,
+    onBackground = Palette.InkLight,
+    surface = Palette.CardLight,
+    onSurface = Palette.InkLight,
+    surfaceVariant = Palette.CardHighLight,
+    onSurfaceVariant = Palette.InkSoftLight,
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Palette.Paper,
+    surfaceContainer = Palette.CardLight,
+    surfaceContainerHigh = Palette.CardHighLight,
+    surfaceContainerHighest = Palette.CardHighestLight,
+    outline = Palette.LineLight,
+    outlineVariant = Palette.LineLight,
     error = Color(0xFFD93025),
     onError = Color(0xFFFFFFFF),
     scrim = Color(0xFF000000),
@@ -137,12 +141,12 @@ private val ArenaTypography = Typography(
     ),
     bodyLarge = TextStyle(
         fontSize = 16.sp,
-        lineHeight = 24.sp,
+        lineHeight = 25.sp,
         fontWeight = FontWeight.Normal,
     ),
     bodyMedium = TextStyle(
         fontSize = 15.sp,
-        lineHeight = 22.sp,
+        lineHeight = 23.sp,
         fontWeight = FontWeight.Normal,
     ),
     bodySmall = TextStyle(

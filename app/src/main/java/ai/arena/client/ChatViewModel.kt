@@ -1,12 +1,12 @@
 package ai.arena.client
 
-import ai.arena.client.data.ApiFormat
 import ai.arena.client.data.AppSettings
 import ai.arena.client.data.ChatMessage
 import ai.arena.client.data.Conversation
 import ai.arena.client.data.ConversationStore
 import ai.arena.client.data.Role
 import ai.arena.client.data.SettingsStore
+import ai.arena.client.data.ThinkingLevel
 import ai.arena.client.data.ThinkingMode
 import ai.arena.client.net.ArenaClient
 import ai.arena.client.net.ChatTurn
@@ -45,8 +45,6 @@ data class UiState(
     val screen: Screen = Screen.CHAT,
     val streaming: Boolean = false,
     val conn: ConnState = ConnState.Unknown,
-    val onboardingTesting: Boolean = false,
-    val onboardingError: String? = null,
 )
 
 class ChatViewModel(app: Application) : AndroidViewModel(app) {
@@ -65,8 +63,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch {
-            // Wait for the real stored settings before revealing the UI —
-            // otherwise a default-settings flash could show the onboarding screen.
+            // v2: built-in key + thinking defaults applied once, then load.
+            settingsStore.migrateV2IfNeeded()
             val stored = settingsStore.flow.first()
             val loaded = convoStore.load()
             _ui.update {
@@ -126,43 +124,6 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 _ui.update { it.copy(conn = ConnState.Fail(e.message ?: "Connection failed")) }
             }
         }
-    }
-
-    /** Onboarding: save the key, verify it with a free GET /v1/models call. */
-    fun connectWithKey(rawKey: String) {
-        val key = rawKey.trim()
-        if (key.isBlank()) {
-            _ui.update { it.copy(onboardingError = "Enter your API key") }
-            return
-        }
-        val gateway = settings.value.gateway
-        viewModelScope.launch {
-            _ui.update { it.copy(onboardingTesting = true, onboardingError = null) }
-            settingsStore.update { s -> s.copy(apiKey = key) }
-            val t0 = SystemClock.elapsedRealtime()
-            try {
-                val models = client.listModels(key, gateway)
-                val ms = SystemClock.elapsedRealtime() - t0
-                _ui.update {
-                    it.copy(
-                        onboardingTesting = false,
-                        onboardingError = null,
-                        conn = ConnState.Ok(models.size, ms),
-                        screen = Screen.CHAT,
-                    )
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _ui.update {
-                    it.copy(onboardingTesting = false, onboardingError = e.message ?: "Connection failed")
-                }
-            }
-        }
-    }
-
-    fun dismissOnboardingError() {
-        _ui.update { it.copy(onboardingError = null) }
     }
 
     // ---------- conversations ----------
@@ -265,7 +226,12 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         persist()
     }
 
-    private fun runAssistant(conv: Conversation, s: AppSettings) {
+    private fun runAssistant(
+        conv: Conversation,
+        s: AppSettings,
+        level: ThinkingLevel = s.thinkingLevel,
+        isRetry: Boolean = false,
+    ) {
         val assistant = ChatMessage(
             role = Role.ASSISTANT,
             streaming = true,
@@ -298,13 +264,14 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             model = s.model,
             system = s.systemPrompt.trim(),
             temperature = s.temperature,
-            thinkingLevel = s.thinkingLevel,
+            thinkingLevel = level,
             turns = turns,
         )
 
         _ui.update { it.copy(streaming = true) }
         val t0 = SystemClock.elapsedRealtime()
         var failure: String? = null
+        var failureCode: Int? = null
         var tokensIn: Int? = null
         var tokensOut: Int? = null
 
@@ -322,7 +289,10 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                             event.input?.let { tokensIn = it }
                             event.output?.let { tokensOut = it }
                         }
-                        is StreamEvent.Error -> failure = event.message
+                        is StreamEvent.Error -> {
+                            failure = event.message
+                            failureCode = event.code
+                        }
                         StreamEvent.Done -> Unit
                     }
                 }
@@ -348,6 +318,27 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 _ui.update { it.copy(streaming = false) }
                 persist()
+
+                // A 400 with thinking params enabled likely means the model
+                // rejected reasoning_effort / thinking budget — strip them and
+                // retry once so chats never brick.
+                val shouldRetry = failure != null && failureCode == 400 &&
+                    level != ThinkingLevel.OFF && !isRetry
+                if (shouldRetry) {
+                    val convNow = _ui.value.conversations.find { it.id == withAssistant.id }
+                    if (convNow != null) {
+                        var msgs = convNow.messages
+                        while (msgs.isNotEmpty() && msgs.last().role == Role.ASSISTANT) {
+                            msgs = msgs.dropLast(1)
+                        }
+                        val cleaned = convNow.copy(
+                            messages = msgs,
+                            updatedAt = System.currentTimeMillis(),
+                        )
+                        replaceConversation(cleaned)
+                        runAssistant(cleaned, s, level = ThinkingLevel.OFF, isRetry = true)
+                    }
+                }
             }
         }
     }
