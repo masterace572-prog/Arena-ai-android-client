@@ -141,6 +141,43 @@ fun ActionPill(text: String, onClick: () -> Unit, modifier: Modifier = Modifier)
     }
 }
 
+/**
+ * Compact icon + label action used for message actions (Copy / Regenerate /
+ * Retry). Flat, quiet, consistent visual weight.
+ */
+@Composable
+fun IconAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    tint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant,
+) {
+    Surface(
+        modifier = modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
+        color = Color.Transparent,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            androidx.compose.material3.Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(14.dp),
+            )
+            Spacer(Modifier.width(5.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = tint,
+            )
+        }
+    }
+}
+
 @Composable
 fun RowSpacer(width: Dp) {
     Spacer(Modifier.width(width))

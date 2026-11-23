@@ -1,8 +1,6 @@
 package ai.arena.client.ui
 
-import ai.arena.client.ChatViewModel
 import ai.arena.client.data.ChatMessage
-import ai.arena.client.data.Role
 import ai.arena.client.data.ThinkingMode
 import ai.arena.client.ui.theme.Palette
 import androidx.compose.animation.AnimatedVisibility
@@ -17,8 +15,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,10 +28,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -54,17 +52,19 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
 // ---------------------------------------------------------------------------
-// Markdown (lightweight: code fences, headings, bullets, bold, inline code)
+// Markdown: code fences, headings, bullets, bold, inline code, links, tables
 // ---------------------------------------------------------------------------
 
 private sealed interface MdBlock {
@@ -72,7 +72,14 @@ private sealed interface MdBlock {
     data class Code(val lang: String, val code: String) : MdBlock
     data class Heading(val text: String) : MdBlock
     data class Bullets(val items: List<String>) : MdBlock
+    data class Table(val header: List<String>, val rows: List<List<String>>) : MdBlock
 }
+
+private fun parseCells(line: String): List<String> =
+    line.trim().trim('|').split('|').map { it.trim() }
+
+private fun isTableSeparator(line: String): Boolean =
+    line.contains('-') && parseCells(line).all { it.isEmpty() || it.all { c -> c == '-' || c == ':' } }
 
 private fun parseMarkdown(src: String): List<MdBlock> {
     val blocks = mutableListOf<MdBlock>()
@@ -92,6 +99,21 @@ private fun parseMarkdown(src: String): List<MdBlock> {
                 }
                 if (i < lines.size) i++ // closing fence
                 blocks.add(MdBlock.Code(lang, buf.toString().trimEnd('\n')))
+            }
+            trimmed.startsWith("|") && trimmed.contains("|", startIndex = 1) -> {
+                val tableLines = mutableListOf<String>()
+                while (i < lines.size && lines[i].trimStart().startsWith("|")) {
+                    tableLines.add(lines[i].trim())
+                    i++
+                }
+                if (tableLines.size >= 2) {
+                    val header = parseCells(tableLines[0])
+                    val bodyStart = if (isTableSeparator(tableLines[1])) 2 else 1
+                    val rows = tableLines.drop(bodyStart).map { parseCells(it) }
+                    blocks.add(MdBlock.Table(header, rows))
+                } else {
+                    blocks.add(MdBlock.Text(tableLines.joinToString("\n")))
+                }
             }
             trimmed.startsWith("#") -> {
                 blocks.add(MdBlock.Heading(trimmed.trimStart('#').trim()))
@@ -116,7 +138,7 @@ private fun parseMarkdown(src: String): List<MdBlock> {
                     val next = lines[i]
                     val nt = next.trimStart()
                     if (next.isBlank() || nt.startsWith("```") || nt.startsWith("#") ||
-                        nt.startsWith("- ") || nt.startsWith("* ")
+                        nt.startsWith("- ") || nt.startsWith("* ") || nt.startsWith("|")
                     ) break
                     buf.append('\n').append(next)
                     i++
@@ -128,9 +150,15 @@ private fun parseMarkdown(src: String): List<MdBlock> {
     return blocks
 }
 
-private val INLINE_REGEX = Regex("(\\*\\*[^*\\n]+\\*\\*|`[^`\\n]+`)")
+private val INLINE_REGEX =
+    Regex("(\\*\\*[^*\\n]+\\*\\*|`[^`\\n]+`|https?://[^\\s)\\]]+)")
 
-private fun buildInline(text: String, codeBg: Color, codeFg: Color): AnnotatedString =
+private fun buildInline(
+    text: String,
+    codeBg: Color,
+    codeFg: Color,
+    linkColor: Color,
+): AnnotatedString =
     buildAnnotatedString {
         var idx = 0
         INLINE_REGEX.findAll(text).forEach { m ->
@@ -139,6 +167,9 @@ private fun buildInline(text: String, codeBg: Color, codeFg: Color): AnnotatedSt
             when {
                 token.startsWith("**") -> withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) {
                     append(token.removePrefix("**").removeSuffix("**"))
+                }
+                token.startsWith("http") -> withLink(LinkAnnotation.Url(token)) {
+                    withStyle(SpanStyle(color = linkColor)) { append(token) }
                 }
                 else -> withStyle(
                     SpanStyle(
@@ -159,8 +190,9 @@ private fun buildInline(text: String, codeBg: Color, codeFg: Color): AnnotatedSt
 @Composable
 private fun MarkdownText(text: String) {
     val blocks = remember(text) { parseMarkdown(text) }
-    val codeBg = MaterialTheme.colorScheme.surfaceContainerHighest
+    val codeBg = MaterialTheme.colorScheme.surfaceContainerHigh
     val codeFg = MaterialTheme.colorScheme.onSurface
+    val linkColor = MaterialTheme.colorScheme.primary
     val bodyStyle = MaterialTheme.typography.bodyMedium
     val onBackground = MaterialTheme.colorScheme.onBackground
 
@@ -168,12 +200,16 @@ private fun MarkdownText(text: String) {
         blocks.forEach { block ->
             when (block) {
                 is MdBlock.Text -> Text(
-                    text = remember(block.body, codeBg) { buildInline(block.body, codeBg, codeFg) },
+                    text = remember(block.body, codeBg, linkColor) {
+                        buildInline(block.body, codeBg, codeFg, linkColor)
+                    },
                     style = bodyStyle,
                     color = onBackground,
                 )
                 is MdBlock.Heading -> Text(
-                    text = remember(block.text, codeBg) { buildInline(block.text, codeBg, codeFg) },
+                    text = remember(block.text, codeBg, linkColor) {
+                        buildInline(block.text, codeBg, codeFg, linkColor)
+                    },
                     style = MaterialTheme.typography.titleMedium,
                     color = onBackground,
                 )
@@ -181,13 +217,15 @@ private fun MarkdownText(text: String) {
                     block.items.forEach { item ->
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Text(
-                                text = "•",
+                                text = "\u2022",
                                 style = bodyStyle,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(end = 8.dp),
                             )
                             Text(
-                                text = remember(item, codeBg) { buildInline(item, codeBg, codeFg) },
+                                text = remember(item, codeBg, linkColor) {
+                                    buildInline(item, codeBg, codeFg, linkColor)
+                                },
                                 style = bodyStyle,
                                 color = onBackground,
                                 modifier = Modifier.weight(1f),
@@ -195,10 +233,59 @@ private fun MarkdownText(text: String) {
                         }
                     }
                 }
+                is MdBlock.Table -> TableBlock(header = block.header, rows = block.rows)
                 is MdBlock.Code -> CodeBlock(lang = block.lang, code = block.code)
             }
         }
     }
+}
+
+@Composable
+private fun TableBlock(header: List<String>, rows: List<List<String>>) {
+    val cellWidth = 150.dp
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            Row(modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)) {
+                header.forEach { cell ->
+                    Text(
+                        text = cell,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 3,
+                        modifier = Modifier.width(cellWidth).padding(horizontal = 10.dp),
+                    )
+                }
+            }
+            HorizontalTableDivider()
+            rows.forEachIndexed { rowIndex, row ->
+                if (rowIndex > 0) HorizontalTableDivider()
+                Row(modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)) {
+                    row.forEach { cell ->
+                        Text(
+                            text = cell,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 6,
+                            modifier = Modifier.width(cellWidth).padding(horizontal = 10.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HorizontalTableDivider() {
+    androidx.compose.material3.HorizontalDivider(
+        color = MaterialTheme.colorScheme.outlineVariant,
+        thickness = 1.dp,
+    )
 }
 
 @Composable
@@ -220,7 +307,7 @@ private fun CodeBlock(lang: String, code: String) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
-                CopyPill(textToCopy = code)
+                CopyButton(textToCopy = code)
             }
             Text(
                 text = code,
@@ -237,11 +324,11 @@ private fun CodeBlock(lang: String, code: String) {
 }
 
 // ---------------------------------------------------------------------------
-// Copy with quiet confirmation
+// Copy with quiet confirmation (compact icon action)
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun CopyPill(textToCopy: String, label: String = "Copy") {
+private fun CopyButton(textToCopy: String) {
     val clipboard = LocalClipboardManager.current
     var copied by remember { mutableStateOf(false) }
     LaunchedEffect(copied) {
@@ -250,8 +337,9 @@ private fun CopyPill(textToCopy: String, label: String = "Copy") {
             copied = false
         }
     }
-    ActionPill(
-        text = if (copied) "Copied ✓" else label,
+    IconAction(
+        icon = CopyGlyph,
+        label = if (copied) "Copied \u2713" else "Copy",
         onClick = {
             clipboard.setText(AnnotatedString(textToCopy))
             copied = true
@@ -386,7 +474,7 @@ fun UserBubble(message: ChatMessage) {
         horizontalArrangement = Arrangement.End,
     ) {
         Surface(
-            modifier = Modifier.widthIn(max = 300.dp),
+            modifier = Modifier.widthIn(max = 320.dp),
             shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 5.dp),
             color = MaterialTheme.colorScheme.primaryContainer,
         ) {
@@ -441,9 +529,13 @@ fun AssistantMessage(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                CopyPill(textToCopy = message.content)
+                CopyButton(textToCopy = message.content)
                 if (isLast) {
-                    ActionPill(text = "Regenerate", onClick = onRegenerate)
+                    IconAction(
+                        icon = Icons.Filled.Refresh,
+                        label = "Regenerate",
+                        onClick = onRegenerate,
+                    )
                 }
                 Spacer(Modifier.weight(1f, fill = true))
                 val meta = buildString {
@@ -453,7 +545,7 @@ fun AssistantMessage(
                     }
                     val tokens = message.tokensOut ?: message.tokensIn
                     if (tokens != null) {
-                        if (isNotEmpty()) append(" · ")
+                        if (isNotEmpty()) append(" \u00B7 ")
                         append("$tokens tokens")
                     }
                 }
@@ -476,7 +568,13 @@ fun AssistantMessage(
                     color = Palette.Error,
                     modifier = Modifier.weight(1f),
                 )
-                if (isLast) ActionPill(text = "Retry", onClick = onRegenerate)
+                if (isLast) {
+                    IconAction(
+                        icon = Icons.Filled.Refresh,
+                        label = "Retry",
+                        onClick = onRegenerate,
+                    )
+                }
             }
         }
     }
@@ -515,7 +613,11 @@ private fun ErrorCard(message: String, onRetry: (() -> Unit)?) {
                 )
                 if (onRetry != null) {
                     Spacer(Modifier.size(6.dp))
-                    ActionPill(text = "Retry", onClick = onRetry)
+                    IconAction(
+                        icon = Icons.Filled.Refresh,
+                        label = "Retry",
+                        onClick = onRetry,
+                    )
                 }
             }
         }
@@ -565,6 +667,13 @@ fun EmptyState() {
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        Spacer(Modifier.size(20.dp))
+        Text(
+            text = "A R E N A",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+            letterSpacing = 3.sp,
         )
     }
 }

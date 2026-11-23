@@ -6,17 +6,14 @@ import ai.arena.client.ChatViewModel
 import ai.arena.client.ConnState
 import ai.arena.client.Screen
 import ai.arena.client.data.ApiFormat
-import ai.arena.client.data.ThinkingLevel
 import ai.arena.client.data.ThinkingMode
 import ai.arena.client.data.normalizeGateway
 import androidx.activity.compose.BackHandler
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -26,11 +23,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -50,7 +47,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,14 +54,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import java.util.Locale
 
 // ---------------------------------------------------------------------------
-// Settings — Claude-clean: section labels, flat cards, no clutter
+// Settings — GENERAL / THINKING / CHAT / CONNECTION / BILLING / ABOUT
+// One source of truth per setting; reasoning level lives in the composer.
 // ---------------------------------------------------------------------------
 
 @Composable
@@ -107,22 +103,14 @@ fun SettingsScreen(vm: ChatViewModel) {
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             item {
-                SectionBlock("Billing") { BillingCard() }
-            }
-            item {
-                SectionBlock("Connection") { ConnectionCard(vm, ui.conn) }
-            }
-            item {
-                SectionBlock("Chat") {
-                    ChatSettingsCard(
-                        format = settings.format,
+                SectionBlock("General") {
+                    GeneralCard(
+                        webSearch = settings.webSearch,
                         systemPrompt = settings.systemPrompt,
                         temperature = settings.temperature,
-                        webSearch = settings.webSearch,
-                        onFormat = { f -> vm.updateSettings { it.copy(format = f) } },
+                        onWebSearch = { w -> vm.updateSettings { it.copy(webSearch = w) } },
                         onSystem = { s -> vm.updateSettings { it.copy(systemPrompt = s) } },
                         onTemperature = { t -> vm.updateSettings { it.copy(temperature = t) } },
-                        onWebSearch = { w -> vm.updateSettings { it.copy(webSearch = w) } },
                     )
                 }
             }
@@ -130,11 +118,23 @@ fun SettingsScreen(vm: ChatViewModel) {
                 SectionBlock("Thinking") {
                     ThinkingCard(
                         mode = settings.thinkingMode,
-                        level = settings.thinkingLevel,
                         onMode = { m -> vm.updateSettings { it.copy(thinkingMode = m) } },
-                        onLevel = { l -> vm.updateSettings { it.copy(thinkingLevel = l) } },
                     )
                 }
+            }
+            item {
+                SectionBlock("Chat") {
+                    ChatCard(
+                        format = settings.format,
+                        onFormat = { f -> vm.updateSettings { it.copy(format = f) } },
+                    )
+                }
+            }
+            item {
+                SectionBlock("Connection") { ConnectionCard(vm, ui.conn) }
+            }
+            item {
+                SectionBlock("Billing") { BillingCard() }
             }
             item {
                 SectionBlock("About") { AboutCard() }
@@ -158,43 +158,198 @@ private fun SectionBlock(title: String, content: @Composable () -> Unit) {
 
 // ---------------------------------------------------------------------------
 
-@Composable
-private fun BillingCard() {
-    val context = LocalContext.current
+// ---------------------------------------------------------------------------
+// GENERAL — web search, system prompt, temperature
+// ---------------------------------------------------------------------------
 
-    SectionCard(
-        title = "Balance",
-        caption = "Your live balance and spend are shown in the Arena dashboard, so the numbers are always accurate.",
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .clickable {
-                    runCatching {
-                        context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse("https://platform.arena.ai/dashboard")),
-                        )
-                    }
-                }
-                .padding(vertical = 8.dp, horizontal = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "Open Arena dashboard",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f),
+@Composable
+private fun GeneralCard(
+    webSearch: Boolean,
+    systemPrompt: String,
+    temperature: Float,
+    onWebSearch: (Boolean) -> Unit,
+    onSystem: (String) -> Unit,
+    onTemperature: (Float) -> Unit,
+) {
+    var promptDraft by remember(systemPrompt) { mutableStateOf(systemPrompt) }
+    val sliderValue = if (temperature < 0f) 0.7f else temperature
+
+    SectionCard(title = "General") {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Filled.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(17.dp),
             )
+            Spacer(Modifier.size(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Web search",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(Modifier.size(2.dp))
+                Text(
+                    text = "Lets the model look things up online. Falls back automatically if a model can't.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.size(12.dp))
+            Switch(
+                checked = webSearch,
+                onCheckedChange = onWebSearch,
+                colors = SwitchDefaults.colors(
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+            )
+        }
+
+        Spacer(Modifier.size(16.dp))
+
+        OutlinedTextField(
+            value = promptDraft,
+            onValueChange = { v ->
+                promptDraft = v
+                onSystem(v)
+            },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("System prompt (optional)") },
+            minLines = 2,
+            maxLines = 5,
+            shape = RoundedCornerShape(12.dp),
+            colors = fieldColors(),
+        )
+
+        Spacer(Modifier.size(16.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "platform.arena.ai",
-                style = MaterialTheme.typography.labelSmall,
+                text = "Temperature",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+                text = if (temperature < 0f) "Auto"
+                else String.format(Locale.US, "%.2f", temperature),
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (temperature >= 0f) {
+                TextButton(onClick = { onTemperature(-1f) }) {
+                    Text("Reset", style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        }
+        Slider(
+            value = sliderValue,
+            onValueChange = onTemperature,
+            valueRange = 0f..2f,
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// THINKING — display mode only (reasoning level lives in the composer)
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun ThinkingCard(
+    mode: ThinkingMode,
+    onMode: (ThinkingMode) -> Unit,
+) {
+    SectionCard(
+        title = "Thinking display",
+        caption = "How reasoning is shown. The reasoning level (Off / Low / Medium / High) is selected in the composer, above the message field.",
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ThinkingMode.entries.forEach { m ->
+                SelectPill(
+                    text = m.label,
+                    selected = mode == m,
+                    onClick = { onMode(m) },
+                )
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// CHAT — API format + fixed router model
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun ChatCard(
+    format: ApiFormat,
+    onFormat: (ApiFormat) -> Unit,
+) {
+    SectionCard(title = "Chat") {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Sparkle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.size(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Arena Router",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(Modifier.size(2.dp))
+                    Text(
+                        text = "coding-router-preview \u00B7 auto-picks the best model",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.size(16.dp))
+
+        Text(
+            text = "API format",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.size(4.dp))
+        Text(
+            text = "Anthropic returns thinking blocks natively.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.size(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SelectPill(
+                text = "OpenAI",
+                selected = format == ApiFormat.OPENAI,
+                onClick = { onFormat(ApiFormat.OPENAI) },
+            )
+            SelectPill(
+                text = "Anthropic",
+                selected = format == ApiFormat.ANTHROPIC,
+                onClick = { onFormat(ApiFormat.ANTHROPIC) },
             )
         }
     }
 }
 
+// ---------------------------------------------------------------------------
+// CONNECTION
 // ---------------------------------------------------------------------------
 
 @Composable
@@ -253,7 +408,7 @@ private fun ConnectionCard(vm: ChatViewModel, conn: ConnState) {
                 is ConnState.Ok -> HintRow {
                     StatusDot(conn)
                     Text(
-                        text = "Connected · ${conn.models} models · ${conn.ms} ms",
+                        text = "Connected \u00B7 ${conn.models} models \u00B7 ${conn.ms} ms",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -268,7 +423,7 @@ private fun ConnectionCard(vm: ChatViewModel, conn: ConnState) {
                     )
                 }
                 is ConnState.Testing -> Text(
-                    text = "Testing…",
+                    text = "Testing\u2026",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -283,214 +438,58 @@ private fun ConnectionCard(vm: ChatViewModel, conn: ConnState) {
 }
 
 // ---------------------------------------------------------------------------
+// BILLING — live balance lives in the Arena dashboard (no public API)
+// ---------------------------------------------------------------------------
 
 @Composable
-private fun ChatSettingsCard(
-    format: ApiFormat,
-    systemPrompt: String,
-    temperature: Float,
-    webSearch: Boolean,
-    onFormat: (ApiFormat) -> Unit,
-    onSystem: (String) -> Unit,
-    onTemperature: (Float) -> Unit,
-    onWebSearch: (Boolean) -> Unit,
-) {
-    var promptDraft by remember(systemPrompt) { mutableStateOf(systemPrompt) }
-    val sliderValue = if (temperature < 0f) 0.7f else temperature
+private fun BillingCard() {
+    val context = LocalContext.current
 
-    SectionCard(title = "Chat") {
-        // Fixed model — informational only
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = Sparkle,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(Modifier.size(10.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Arena Router",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(Modifier.size(2.dp))
-                    Text(
-                        text = "coding-router-preview · auto-picks the best model",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+    SectionCard(
+        title = "Balance",
+        caption = "Your live balance and spend are shown in the Arena dashboard, so the numbers are always accurate.",
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .clickable {
+                    runCatching {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse("https://platform.arena.ai/dashboard")),
+                        )
+                    }
                 }
-            }
-        }
-
-        Spacer(Modifier.size(16.dp))
-
-        Text(
-            text = "API format",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(Modifier.size(4.dp))
-        Text(
-            text = "Anthropic returns thinking blocks natively.",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.size(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SelectPill(
-                text = "OpenAI",
-                selected = format == ApiFormat.OPENAI,
-                onClick = { onFormat(ApiFormat.OPENAI) },
-            )
-            SelectPill(
-                text = "Anthropic",
-                selected = format == ApiFormat.ANTHROPIC,
-                onClick = { onFormat(ApiFormat.ANTHROPIC) },
-            )
-        }
-
-        Spacer(Modifier.size(18.dp))
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Web search",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(Modifier.size(2.dp))
-                Text(
-                    text = "Lets the model look things up online. Falls back automatically if a model can't.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Spacer(Modifier.size(12.dp))
-            Switch(
-                checked = webSearch,
-                onCheckedChange = onWebSearch,
-                colors = SwitchDefaults.colors(
-                    checkedTrackColor = MaterialTheme.colorScheme.primary,
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            )
-        }
-
-        Spacer(Modifier.size(18.dp))
-
-        OutlinedTextField(
-            value = promptDraft,
-            onValueChange = { v ->
-                promptDraft = v
-                onSystem(v)
-            },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("System prompt (optional)") },
-            minLines = 2,
-            maxLines = 5,
-            shape = RoundedCornerShape(12.dp),
-            colors = fieldColors(),
-        )
-
-        Spacer(Modifier.size(16.dp))
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
+                .padding(vertical = 8.dp, horizontal = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                text = "Temperature",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+                text = "Open Arena dashboard",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f),
             )
-            Spacer(Modifier.weight(1f))
             Text(
-                text = if (temperature < 0f) "Auto"
-                else String.format(Locale.US, "%.2f", temperature),
-                style = MaterialTheme.typography.labelMedium,
+                text = "platform.arena.ai",
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (temperature >= 0f) {
-                TextButton(onClick = { onTemperature(-1f) }) {
-                    Text("Reset", style = MaterialTheme.typography.labelMedium)
-                }
-            }
         }
-        Slider(
-            value = sliderValue,
-            onValueChange = onTemperature,
-            valueRange = 0f..2f,
-        )
     }
 }
 
 // ---------------------------------------------------------------------------
-
-@Composable
-private fun ThinkingCard(
-    mode: ThinkingMode,
-    level: ThinkingLevel,
-    onMode: (ThinkingMode) -> Unit,
-    onLevel: (ThinkingLevel) -> Unit,
-) {
-    SectionCard(
-        title = "Thinking",
-        caption = "Reasoning streams live while the model works.",
-    ) {
-        Text(
-            text = "Display",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(Modifier.size(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ThinkingMode.entries.forEach { m ->
-                SelectPill(
-                    text = m.label,
-                    selected = mode == m,
-                    onClick = { onMode(m) },
-                )
-            }
-        }
-
-        Spacer(Modifier.size(18.dp))
-
-        Text(
-            text = "Reasoning level",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(Modifier.size(4.dp))
-        Text(
-            text = "Higher levels think longer and use more tokens. Auto-falls back if a model rejects it.",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.size(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ThinkingLevel.entries.forEach { l ->
-                SelectPill(
-                    text = l.label,
-                    selected = level == l,
-                    onClick = { onLevel(l) },
-                )
-            }
-        }
-    }
-}
-
+// ABOUT
 // ---------------------------------------------------------------------------
 
 @Composable
 private fun AboutCard() {
     val context = LocalContext.current
+    val version = remember(context) {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrDefault("").orEmpty()
+    }
 
     SectionCard(title = "About") {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -501,14 +500,14 @@ private fun AboutCard() {
             )
             Spacer(Modifier.weight(1f))
             Text(
-                text = "v2.0.0",
+                text = if (version.isBlank()) "" else "v$version",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Spacer(Modifier.size(6.dp))
         Text(
-            text = "ai.arena.client · API key built in — nothing to enter.",
+            text = "ai.arena.client \u00B7 API key built in \u2014 nothing to enter.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

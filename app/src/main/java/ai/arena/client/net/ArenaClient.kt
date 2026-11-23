@@ -307,7 +307,7 @@ class ArenaClient {
             "content_block_start" -> {
                 val block = obj.optJSONObject("content_block")
                 if (block != null && block.optString("type") == "server_tool_use") {
-                    listOf(StreamEvent.Thinking("\n🔍 Searching the web…\n"))
+                    listOf(StreamEvent.Thinking("\nSearching the web…\n"))
                 } else {
                     emptyList() // block kind is implied by each delta
                 }

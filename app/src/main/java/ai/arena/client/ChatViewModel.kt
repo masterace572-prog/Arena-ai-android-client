@@ -45,6 +45,7 @@ data class UiState(
     val screen: Screen = Screen.CHAT,
     val streaming: Boolean = false,
     val conn: ConnState = ConnState.Unknown,
+    val notice: String? = null,
 )
 
 class ChatViewModel(app: Application) : AndroidViewModel(app) {
@@ -247,6 +248,10 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         ).joinToString("\n\n")
     }
 
+    fun clearNotice() {
+        _ui.update { it.copy(notice = null) }
+    }
+
     private fun runAssistant(
         conv: Conversation,
         s: AppSettings,
@@ -363,6 +368,18 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                         retryStep == 1 && s.webSearch -> stripTools = true
                     }
                     val shouldRetry = stripThinking || stripTools
+                    if (shouldRetry) {
+                        // Tell the user when a feature had to be dropped — never
+                        // silently claim thinking/search was active.
+                        _ui.update {
+                            it.copy(
+                                notice = when {
+                                    stripThinking -> "This model doesn't support thinking — sent without it."
+                                    else -> "Web search isn't available for this model — answered without it."
+                                },
+                            )
+                        }
+                    }
                     if (shouldRetry) {
                     val convNow = _ui.value.conversations.find { it.id == withAssistant.id }
                     if (convNow != null) {
